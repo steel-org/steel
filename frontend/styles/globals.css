@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap");
+
+@layer base {
+  html {
+    font-family: "Inter", system-ui, sans-serif;
+  }
+
+  body {
+    @apply bg-steel-900 text-steel-100;
+  }
+}
+
+@layer components {
+  .chat-message {
+    @apply p-4 rounded-lg mb-4 max-w-4xl;
+  }
+
+  .chat-message.own {
+    @apply bg-steel-700 ml-auto;
+  }
+
+  .chat-message.other {
+    @apply bg-steel-800;
+  }
+
+  .code-block {
+    @apply bg-steel-800 border border-steel-600 rounded-lg p-4 font-mono text-sm overflow-x-auto;
+  }
+
+  .sidebar-item {
+    @apply flex items-center space-x-3 p-3 rounded-lg hover:bg-steel-800 transition-colors cursor-pointer;
+  }
+
+  .sidebar-item.active {
+    @apply bg-steel-700 border-l-4 border-blue-500;
+  }
+
+  .input-field {
+    @apply bg-steel-800 border border-steel-600 rounded-lg px-4 py-3 text-steel-100 placeholder-steel-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+  }
+
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors;
+  }
+
+  .btn-secondary {
+    @apply bg-steel-700 hover:bg-steel-600 text-steel-100 px-4 py-2 rounded-lg font-medium transition-colors;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-steel-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-steel-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-steel-500;
+}
+
+/* Code syntax highlighting */
+.code-javascript {
+  @apply text-yellow-400;
+}
+.code-python {
+  @apply text-blue-400;
+}
+.code-html {
+  @apply text-orange-400;
+}
+.code-css {
+  @apply text-pink-400;
+}
+.code-json {
+  @apply text-green-400;
+}
