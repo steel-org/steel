@@ -8,15 +8,18 @@ This repository contains will the **first working module** of Steel: a real-time
 
 ---
 
-## 🚀 Current Module: Real-Time Chat
+## 🚀 Current Module: Private Messaging
 
-The chat system allows developers to:
+The private messaging system allows developers to:
 
-- Send and receive real-time messages
-- Prepare for code snippet sharing
-- Collaborate via a dedicated sidebar interface
+- Send and receive private 1-on-1 messages
+- Share code snippets with syntax highlighting
+- See message status indicators (sent, delivered, read)
+- Delete their own messages
+- Use @mentions to tag users
+- View online/offline status and typing indicators
 
-It works via WebSockets (Socket.io) and is deployable for public testing.
+It works via WebSockets (Socket.io) with localStorage persistence and is deployable for public testing.
 
 ---
 

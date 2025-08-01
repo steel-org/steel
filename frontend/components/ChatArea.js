@@ -1,18 +1,22 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Code, Smile } from "lucide-react";
+import { Send, Code, Smile, MoreVertical, Trash2 } from "lucide-react";
 import Message from "./Message";
 import MessageInput from "./MessageInput";
 
 export default function ChatArea({
   messages,
   currentUser,
+  otherUser,
+  conversationId,
   onSendMessage,
   onSendCodeSnippet,
   onTyping,
+  onDeleteMessage,
   typingUsers,
 }) {
   const messagesEndRef = useRef(null);
   const [showCodeInput, setShowCodeInput] = useState(false);
+  const [showMessageMenu, setShowMessageMenu] = useState(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -35,18 +39,65 @@ export default function ChatArea({
     }
   };
 
+  const handleDeleteMessage = (messageId) => {
+    onDeleteMessage(messageId);
+    setShowMessageMenu(null);
+  };
+
+  const formatMessageText = (text) => {
+    // Basic mention highlighting
+    return text.replace(
+      /@(\w+)/g,
+      '<span class="text-blue-400 font-medium">@$1</span>'
+    );
+  };
+
+  if (!otherUser) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-steel-700 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Send className="w-8 h-8 text-steel-400" />
+          </div>
+          <h3 className="text-lg font-medium text-steel-200 mb-2">
+            No conversation selected
+          </h3>
+          <p className="text-steel-400">Select a user to start chatting</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex flex-col">
       {/* Header */}
       <div className="bg-steel-800 border-b border-steel-700 p-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-steel-100">
-              Developer Chat
-            </h2>
-            <p className="text-sm text-steel-400">
-              {messages.length} messages • Real-time collaboration
-            </p>
+          <div className="flex items-center space-x-3">
+            <div className="relative">
+              <img
+                src={otherUser.avatar}
+                alt={otherUser.username}
+                className="w-10 h-10 rounded-full"
+              />
+              <div
+                className={`w-3 h-3 absolute -bottom-0.5 -right-0.5 rounded-full border-2 border-steel-800 ${
+                  otherUser.isOnline ? "bg-green-500" : "bg-steel-500"
+                }`}
+              />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-steel-100">
+                {otherUser.username}
+              </h2>
+              <p className="text-sm text-steel-400">
+                {otherUser.isOnline
+                  ? "Online"
+                  : `Last seen ${new Date(
+                      otherUser.lastSeen
+                    ).toLocaleTimeString()}`}
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -74,18 +125,24 @@ export default function ChatArea({
               <Send className="w-8 h-8 text-steel-400" />
             </div>
             <h3 className="text-lg font-medium text-steel-200 mb-2">
-              Welcome to Steel Chat
+              Start a conversation with {otherUser.username}
             </h3>
-            <p className="text-steel-400">
-              Start a conversation with your team!
-            </p>
+            <p className="text-steel-400">Send your first message!</p>
           </div>
         ) : (
           messages.map((message) => (
             <Message
               key={message.id}
               message={message}
-              isOwn={currentUser && message.user?.id === currentUser.id}
+              isOwn={currentUser && message.senderId === currentUser.id}
+              otherUser={otherUser}
+              onDelete={handleDeleteMessage}
+              showMenu={showMessageMenu === message.id}
+              onToggleMenu={() =>
+                setShowMessageMenu(
+                  showMessageMenu === message.id ? null : message.id
+                )
+              }
             />
           ))
         )}
@@ -104,7 +161,7 @@ export default function ChatArea({
             <MessageInput
               onSend={handleSendMessage}
               onTyping={onTyping}
-              placeholder="Type your message..."
+              placeholder={`Message ${otherUser.username}...`}
             />
 
             <button

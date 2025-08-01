@@ -5,10 +5,10 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>Steel - Real-time Developer Chat</title>
+        <title>Steel - Private Messaging</title>
         <meta
           name="description"
-          content="Real-time chat for developers. Share code, collaborate, and build together."
+          content="Private messaging for developers. Chat securely with your team members."
         />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />

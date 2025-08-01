@@ -10,13 +10,35 @@ const BACKEND_URL =
 export default function ChatLayout() {
   const [socket, setSocket] = useState(null);
   const [users, setUsers] = useState([]);
-  const [messages, setMessages] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(true);
+  const [conversations, setConversations] = useState([]);
+  const [currentConversation, setCurrentConversation] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [typingUsers, setTypingUsers] = useState(new Set());
 
+  const loadMessagesFromStorage = (conversationId) => {
+    try {
+      const stored = localStorage.getItem(`steel_messages_${conversationId}`);
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error("Error loading messages from localStorage:", error);
+      return [];
+    }
+  };
+
+  const saveMessagesToStorage = (conversationId, messages) => {
+    try {
+      localStorage.setItem(
+        `steel_messages_${conversationId}`,
+        JSON.stringify(messages)
+      );
+    } catch (error) {
+      console.error("Error saving messages to localStorage:", error);
+    }
+  };
+
   useEffect(() => {
-    // Initialize socket connection
     const newSocket = io(BACKEND_URL, {
       transports: ["websocket", "polling"],
     });
@@ -33,36 +55,76 @@ export default function ChatLayout() {
       setUsers(usersList);
     });
 
-    newSocket.on("messageHistory", (history) => {
-      setMessages(history);
+    newSocket.on("userConversations", (conversationsData) => {
+      setConversations(conversationsData);
     });
 
-    newSocket.on("message", (message) => {
-      setMessages((prev) => [...prev, message]);
+    newSocket.on("conversationData", (data) => {
+      const { conversationId, messages: serverMessages } = data;
+      const localMessages = loadMessagesFromStorage(conversationId);
+      const allMessages = [...localMessages, ...serverMessages];
+
+      const uniqueMessages = allMessages
+        .filter(
+          (msg, index, self) => index === self.findIndex((m) => m.id === msg.id)
+        )
+        .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+      setMessages(uniqueMessages);
+      saveMessagesToStorage(conversationId, uniqueMessages);
+    });
+
+    newSocket.on("messageReceived", (message) => {
+      setMessages((prev) => {
+        const newMessages = [...prev, message];
+        saveMessagesToStorage(message.conversationId, newMessages);
+        return newMessages;
+      });
+    });
+
+    newSocket.on("newMessage", (message) => {
+      setMessages((prev) => {
+        const newMessages = [...prev, message];
+        saveMessagesToStorage(message.conversationId, newMessages);
+        return newMessages;
+      });
+
+      if (currentConversation === message.conversationId) {
+        newSocket.emit("markAsRead", {
+          conversationId: message.conversationId,
+        });
+      }
+    });
+
+    newSocket.on("messageStatusUpdate", ({ messageId, status }) => {
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === messageId ? { ...msg, status } : msg))
+      );
+    });
+
+    newSocket.on("messageDeleted", ({ messageId, conversationId }) => {
+      setMessages((prev) => {
+        const newMessages = prev.filter((msg) => msg.id !== messageId);
+        saveMessagesToStorage(conversationId, newMessages);
+        return newMessages;
+      });
     });
 
     newSocket.on("userJoined", (user) => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          text: `${user.username} joined the chat`,
-          type: "system",
-          timestamp: new Date().toISOString(),
-        },
-      ]);
+      setUsers((prev) => {
+        const existing = prev.find((u) => u.id === user.id);
+        return existing ? prev : [...prev, user];
+      });
     });
 
     newSocket.on("userLeft", (user) => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          text: `${user.username} left the chat`,
-          type: "system",
-          timestamp: new Date().toISOString(),
-        },
-      ]);
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id
+            ? { ...u, isOnline: false, lastSeen: user.lastSeen }
+            : u
+        )
+      );
     });
 
     newSocket.on("userTyping", ({ userId, username, isTyping }) => {
@@ -82,7 +144,7 @@ export default function ChatLayout() {
     return () => {
       newSocket.close();
     };
-  }, []);
+  }, [currentConversation]);
 
   const handleUserJoin = (userData) => {
     if (socket) {
@@ -92,22 +154,69 @@ export default function ChatLayout() {
     }
   };
 
+  const handleStartConversation = (recipientId) => {
+    if (!socket || !currentUser) return;
+
+    const conversationId = [currentUser.id, recipientId].sort().join("_");
+    const existingMessages = loadMessagesFromStorage(conversationId);
+    setMessages(existingMessages);
+
+    setCurrentConversation(conversationId);
+
+    socket.emit("getConversation", { conversationId });
+  };
+
   const sendMessage = (text, type = "text") => {
-    if (socket && text.trim()) {
-      socket.emit("message", { text, type });
+    if (socket && text.trim() && currentConversation) {
+      const [user1Id, user2Id] = currentConversation.split("_");
+      const recipientId = user1Id === currentUser.id ? user2Id : user1Id;
+
+      socket.emit("privateMessage", {
+        recipientId,
+        text,
+        type,
+      });
     }
   };
 
   const sendCodeSnippet = (code, language) => {
-    if (socket && code.trim()) {
-      socket.emit("codeSnippet", { code, language });
+    if (socket && code.trim() && currentConversation) {
+      const [user1Id, user2Id] = currentConversation.split("_");
+      const recipientId = user1Id === currentUser.id ? user2Id : user1Id;
+
+      socket.emit("codeSnippet", {
+        recipientId,
+        code,
+        language,
+      });
     }
   };
 
   const handleTyping = (isTyping) => {
-    if (socket) {
-      socket.emit("typing", isTyping);
+    if (socket && currentConversation) {
+      const [user1Id, user2Id] = currentConversation.split("_");
+      const recipientId = user1Id === currentUser.id ? user2Id : user1Id;
+
+      socket.emit("typing", { recipientId, isTyping });
     }
+  };
+
+  const deleteMessage = (messageId) => {
+    if (socket && currentConversation) {
+      socket.emit("deleteMessage", {
+        messageId,
+        conversationId: currentConversation,
+      });
+    }
+  };
+
+  const getCurrentConversationParticipant = () => {
+    if (!currentConversation || !currentUser) return null;
+
+    const [user1Id, user2Id] = currentConversation.split("_");
+    const otherUserId = user1Id === currentUser.id ? user2Id : user1Id;
+
+    return users.find((user) => user.id === otherUserId);
   };
 
   if (!socket) {
@@ -125,19 +234,53 @@ export default function ChatLayout() {
     <div className="flex h-screen bg-steel-900">
       <Sidebar
         users={users}
+        conversations={conversations}
         currentUser={currentUser}
-        onUserSelect={(user) => console.log("Selected user:", user)}
+        currentConversation={currentConversation}
+        onUserSelect={handleStartConversation}
+        onConversationSelect={setCurrentConversation}
       />
 
       <div className="flex-1 flex flex-col">
-        <ChatArea
-          messages={messages}
-          currentUser={currentUser}
-          onSendMessage={sendMessage}
-          onSendCodeSnippet={sendCodeSnippet}
-          onTyping={handleTyping}
-          typingUsers={Array.from(typingUsers)}
-        />
+        {currentConversation ? (
+          <ChatArea
+            messages={messages}
+            currentUser={currentUser}
+            otherUser={getCurrentConversationParticipant()}
+            conversationId={currentConversation}
+            onSendMessage={sendMessage}
+            onSendCodeSnippet={sendCodeSnippet}
+            onTyping={handleTyping}
+            onDeleteMessage={deleteMessage}
+            typingUsers={Array.from(typingUsers)}
+          />
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-steel-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg
+                  className="w-8 h-8 text-steel-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-steel-200 mb-2">
+                Select a conversation
+              </h3>
+              <p className="text-steel-400">
+                Choose a user from the sidebar to start chatting
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {showUserModal && (

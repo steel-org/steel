@@ -44,6 +44,29 @@ export default function MessageInput({ onSend, onTyping, placeholder }) {
     }
   };
 
+  const handleMention = (username) => {
+    const currentValue = message;
+    const cursorPosition = inputRef.current?.selectionStart || 0;
+
+    const beforeCursor = currentValue.substring(0, cursorPosition);
+    const afterCursor = currentValue.substring(cursorPosition);
+
+    const lastAtSymbol = beforeCursor.lastIndexOf("@");
+    if (lastAtSymbol !== -1) {
+      const newValue =
+        beforeCursor.substring(0, lastAtSymbol) + `@${username} ` + afterCursor;
+      setMessage(newValue);
+
+      setTimeout(() => {
+        if (inputRef.current) {
+          const newPosition = lastAtSymbol + username.length + 2; // +2 for @ and space
+          inputRef.current.setSelectionRange(newPosition, newPosition);
+          inputRef.current.focus();
+        }
+      }, 0);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="flex-1">
       <div className="flex items-end space-x-2">
@@ -61,6 +84,32 @@ export default function MessageInput({ onSend, onTyping, placeholder }) {
               maxHeight: "128px",
             }}
           />
+
+          {message.includes("@") && (
+            <div className="absolute bottom-full left-0 right-0 bg-steel-700 rounded-lg border border-steel-600 shadow-lg mb-2 max-h-32 overflow-y-auto">
+              <div className="p-2">
+                <div className="text-xs text-steel-400 mb-2 px-2">
+                  Suggestions:
+                </div>
+                <div className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => handleMention("user1")}
+                    className="w-full text-left px-2 py-1 text-sm text-steel-200 hover:bg-steel-600 rounded"
+                  >
+                    @user1
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleMention("user2")}
+                    className="w-full text-left px-2 py-1 text-sm text-steel-200 hover:bg-steel-600 rounded"
+                  >
+                    @user2
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <button
