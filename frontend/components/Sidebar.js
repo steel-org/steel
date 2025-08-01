@@ -1,45 +1,20 @@
 import { useState } from "react";
-import { Users, User, Circle, MessageCircle, Plus, Search } from "lucide-react";
+import { Users, User, Circle, Search } from "lucide-react";
 
 export default function Sidebar({
   users,
-  conversations,
   currentUser,
-  currentConversation,
+  selectedUser,
   onUserSelect,
-  onConversationSelect,
 }) {
-  const [activeTab, setActiveTab] = useState("conversations");
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredUsers = users.filter(
     (user) =>
       user.id !== currentUser?.id &&
+      user.isOnline &&
       user.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const filteredConversations = conversations.filter((conv) => {
-    const participant = conv.participants.find((p) => p.id !== currentUser?.id);
-    return (
-      participant &&
-      participant.username.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
-
-  const getOtherParticipant = (conversation) => {
-    return conversation.participants.find((p) => p.id !== currentUser?.id);
-  };
-
-  const formatLastMessage = (message) => {
-    if (!message) return "No messages yet";
-
-    const text =
-      message.text.length > 30
-        ? message.text.substring(0, 30) + "..."
-        : message.text;
-
-    return text;
-  };
 
   const formatTime = (timestamp) => {
     if (!timestamp) return "";
@@ -100,7 +75,7 @@ export default function Sidebar({
           <Search className="w-4 h-4 text-steel-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Search online users..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="input-field w-full pl-10 text-sm"
@@ -108,107 +83,23 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-steel-700">
-        <button
-          onClick={() => setActiveTab("conversations")}
-          className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
-            activeTab === "conversations"
-              ? "text-blue-400 border-b-2 border-blue-400"
-              : "text-steel-400 hover:text-steel-200"
-          }`}
-        >
-          <MessageCircle className="w-4 h-4 inline mr-2" />
-          Conversations
-        </button>
-        <button
-          onClick={() => setActiveTab("users")}
-          className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
-            activeTab === "users"
-              ? "text-blue-400 border-b-2 border-blue-400"
-              : "text-steel-400 hover:text-steel-200"
-          }`}
-        >
-          <Users className="w-4 h-4 inline mr-2" />
-          Users
-        </button>
-      </div>
-
-      {/* Content */}
+      {/* Online Users */}
       <div className="flex-1 overflow-y-auto">
-        {activeTab === "conversations" ? (
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-steel-400 uppercase tracking-wide">
-                Recent Chats ({filteredConversations.length})
-              </h3>
-            </div>
-
-            <div className="space-y-2">
-              {filteredConversations.map((conversation) => {
-                const otherUser = getOtherParticipant(conversation);
-                const isActive = currentConversation === conversation.id;
-
-                return (
-                  <div
-                    key={conversation.id}
-                    className={`sidebar-item ${isActive ? "active" : ""}`}
-                    onClick={() => onConversationSelect(conversation.id)}
-                  >
-                    <div className="relative">
-                      <img
-                        src={otherUser?.avatar}
-                        alt={otherUser?.username}
-                        className="w-10 h-10 rounded-full"
-                      />
-                      <Circle
-                        className={`w-2.5 h-2.5 absolute -bottom-0.5 -right-0.5 ${
-                          otherUser?.isOnline
-                            ? "text-green-500 fill-current"
-                            : "text-steel-500"
-                        }`}
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="text-steel-100 font-medium truncate">
-                          {otherUser?.username}
-                        </p>
-                        {conversation.lastMessage && (
-                          <span className="text-xs text-steel-400">
-                            {formatTime(conversation.lastMessage.timestamp)}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-steel-400 truncate">
-                        {formatLastMessage(conversation.lastMessage)}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {filteredConversations.length === 0 && (
-                <div className="text-center py-8">
-                  <MessageCircle className="w-8 h-8 text-steel-600 mx-auto mb-2" />
-                  <p className="text-steel-400 text-sm">No conversations yet</p>
-                </div>
-              )}
-            </div>
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium text-steel-400 uppercase tracking-wide">
+              Online Users ({filteredUsers.length})
+            </h3>
           </div>
-        ) : (
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-steel-400 uppercase tracking-wide">
-                Online Users ({filteredUsers.length})
-              </h3>
-            </div>
 
-            <div className="space-y-2">
-              {filteredUsers.map((user) => (
+          <div className="space-y-2">
+            {filteredUsers.map((user) => {
+              const isSelected = selectedUser?.id === user.id;
+
+              return (
                 <div
                   key={user.id}
-                  className="sidebar-item"
+                  className={`sidebar-item ${isSelected ? "active" : ""}`}
                   onClick={() => onUserSelect(user.id)}
                 >
                   <div className="relative">
@@ -217,39 +108,38 @@ export default function Sidebar({
                       alt={user.username}
                       className="w-10 h-10 rounded-full"
                     />
-                    <Circle
-                      className={`w-2.5 h-2.5 absolute -bottom-0.5 -right-0.5 ${
-                        user.isOnline
-                          ? "text-green-500 fill-current"
-                          : "text-steel-500"
-                      }`}
-                    />
+                    <Circle className="w-2.5 h-2.5 text-green-500 absolute -bottom-0.5 -right-0.5 fill-current" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-steel-100 font-medium truncate">
-                      {user.username}
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-steel-100 font-medium truncate">
+                        {user.username}
+                      </p>
+                      <span className="text-xs text-green-400">Online</span>
+                    </div>
                     <p className="text-xs text-steel-400">
-                      {user.isOnline
-                        ? "Online"
-                        : `Last seen ${formatTime(user.lastSeen)}`}
+                      Click to start chatting
                     </p>
                   </div>
-                  <Plus className="w-4 h-4 text-steel-400" />
                 </div>
-              ))}
+              );
+            })}
 
-              {filteredUsers.length === 0 && (
-                <div className="text-center py-8">
-                  <User className="w-8 h-8 text-steel-600 mx-auto mb-2" />
-                  <p className="text-steel-400 text-sm">
-                    No other users online
+            {filteredUsers.length === 0 && (
+              <div className="text-center py-8">
+                <User className="w-8 h-8 text-steel-600 mx-auto mb-2" />
+                <p className="text-steel-400 text-sm">
+                  {searchTerm ? "No users found" : "No other users online"}
+                </p>
+                {!searchTerm && (
+                  <p className="text-steel-500 text-xs mt-1">
+                    Invite someone to join!
                   </p>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Footer */}

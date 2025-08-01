@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Code, Smile, MoreVertical, Trash2 } from "lucide-react";
+import { Send, Code, Smile, X, Reply } from "lucide-react";
 import Message from "./Message";
 import MessageInput from "./MessageInput";
 
@@ -7,11 +7,13 @@ export default function ChatArea({
   messages,
   currentUser,
   otherUser,
-  conversationId,
+  replyingTo,
   onSendMessage,
   onSendCodeSnippet,
   onTyping,
   onDeleteMessage,
+  onReplyToMessage,
+  onCancelReply,
   typingUsers,
 }) {
   const messagesEndRef = useRef(null);
@@ -44,12 +46,9 @@ export default function ChatArea({
     setShowMessageMenu(null);
   };
 
-  const formatMessageText = (text) => {
-    // Basic mention highlighting
-    return text.replace(
-      /@(\w+)/g,
-      '<span class="text-blue-400 font-medium">@$1</span>'
-    );
+  const handleReplyToMessage = (message) => {
+    onReplyToMessage(message);
+    setShowMessageMenu(null);
   };
 
   if (!otherUser) {
@@ -117,6 +116,32 @@ export default function ChatArea({
         </div>
       </div>
 
+      {/* Reply Preview */}
+      {replyingTo && (
+        <div className="bg-steel-800 border-b border-steel-700 p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Reply className="w-4 h-4 text-blue-400" />
+              <span className="text-sm text-steel-400">Replying to</span>
+              <span className="text-sm text-steel-200 font-medium">
+                {replyingTo.senderId === currentUser?.id
+                  ? "You"
+                  : otherUser.username}
+              </span>
+            </div>
+            <button
+              onClick={onCancelReply}
+              className="p-1 text-steel-400 hover:text-steel-200 hover:bg-steel-700 rounded transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="mt-2 text-sm text-steel-300 truncate">
+            {replyingTo.text}
+          </div>
+        </div>
+      )}
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
@@ -137,6 +162,7 @@ export default function ChatArea({
               isOwn={currentUser && message.senderId === currentUser.id}
               otherUser={otherUser}
               onDelete={handleDeleteMessage}
+              onReply={handleReplyToMessage}
               showMenu={showMessageMenu === message.id}
               onToggleMenu={() =>
                 setShowMessageMenu(
@@ -161,7 +187,15 @@ export default function ChatArea({
             <MessageInput
               onSend={handleSendMessage}
               onTyping={onTyping}
-              placeholder={`Message ${otherUser.username}...`}
+              placeholder={
+                replyingTo
+                  ? `Reply to ${
+                      replyingTo.senderId === currentUser?.id
+                        ? "your message"
+                        : otherUser.username
+                    }...`
+                  : `Message ${otherUser.username}...`
+              }
             />
 
             <button
