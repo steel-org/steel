@@ -12,14 +12,15 @@ export default function ChatLayout() {
   const [users, setUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(true);
-  const [conversations, setConversations] = useState([]);
-  const [currentConversation, setCurrentConversation] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [typingUsers, setTypingUsers] = useState(new Set());
+  const [replyingTo, setReplyingTo] = useState(null);
 
-  const loadMessagesFromStorage = (conversationId) => {
+  // Load messages from localStorage
+  const loadMessagesFromStorage = (userId) => {
     try {
-      const stored = localStorage.getItem(`steel_messages_${conversationId}`);
+      const stored = localStorage.getItem(`steel_messages_${userId}`);
       return stored ? JSON.parse(stored) : [];
     } catch (error) {
       console.error("Error loading messages from localStorage:", error);
@@ -27,10 +28,11 @@ export default function ChatLayout() {
     }
   };
 
-  const saveMessagesToStorage = (conversationId, messages) => {
+  // Save messages to localStorage
+  const saveMessagesToStorage = (userId, messages) => {
     try {
       localStorage.setItem(
-        `steel_messages_${conversationId}`,
+        `steel_messages_${userId}`,
         JSON.stringify(messages)
       );
     } catch (error) {
@@ -55,29 +57,15 @@ export default function ChatLayout() {
       setUsers(usersList);
     });
 
-    newSocket.on("userConversations", (conversationsData) => {
-      setConversations(conversationsData);
-    });
-
-    newSocket.on("conversationData", (data) => {
-      const { conversationId, messages: serverMessages } = data;
-      const localMessages = loadMessagesFromStorage(conversationId);
-      const allMessages = [...localMessages, ...serverMessages];
-
-      const uniqueMessages = allMessages
-        .filter(
-          (msg, index, self) => index === self.findIndex((m) => m.id === msg.id)
-        )
-        .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-      setMessages(uniqueMessages);
-      saveMessagesToStorage(conversationId, uniqueMessages);
-    });
-
     newSocket.on("messageReceived", (message) => {
       setMessages((prev) => {
         const newMessages = [...prev, message];
-        saveMessagesToStorage(message.conversationId, newMessages);
+        // Save to localStorage for both sender and recipient
+        const otherUserId =
+          message.senderId === currentUser?.id
+            ? message.recipientId
+            : message.senderId;
+        saveMessagesToStorage(otherUserId, newMessages);
         return newMessages;
       });
     });
@@ -85,13 +73,26 @@ export default function ChatLayout() {
     newSocket.on("newMessage", (message) => {
       setMessages((prev) => {
         const newMessages = [...prev, message];
-        saveMessagesToStorage(message.conversationId, newMessages);
+        // Save to localStorage
+        const otherUserId =
+          message.senderId === currentUser?.id
+            ? message.recipientId
+            : message.senderId;
+        saveMessagesToStorage(otherUserId, newMessages);
         return newMessages;
       });
 
-      if (currentConversation === message.conversationId) {
+      // Mark as read if conversation is active
+      if (
+        selectedUser &&
+        ((message.senderId === selectedUser.id &&
+          message.recipientId === currentUser?.id) ||
+          (message.recipientId === selectedUser.id &&
+            message.senderId === currentUser?.id))
+      ) {
         newSocket.emit("markAsRead", {
-          conversationId: message.conversationId,
+          senderId: message.senderId,
+          messageId: message.id,
         });
       }
     });
@@ -102,10 +103,13 @@ export default function ChatLayout() {
       );
     });
 
-    newSocket.on("messageDeleted", ({ messageId, conversationId }) => {
+    newSocket.on("messageDeleted", ({ messageId }) => {
       setMessages((prev) => {
         const newMessages = prev.filter((msg) => msg.id !== messageId);
-        saveMessagesToStorage(conversationId, newMessages);
+        // Update localStorage
+        if (selectedUser) {
+          saveMessagesToStorage(selectedUser.id, newMessages);
+        }
         return newMessages;
       });
     });
@@ -144,7 +148,7 @@ export default function ChatLayout() {
     return () => {
       newSocket.close();
     };
-  }, [currentConversation]);
+  }, [currentUser, selectedUser]);
 
   const handleUserJoin = (userData) => {
     if (socket) {
@@ -154,69 +158,63 @@ export default function ChatLayout() {
     }
   };
 
-  const handleStartConversation = (recipientId) => {
-    if (!socket || !currentUser) return;
+  const handleStartConversation = (userId) => {
+    const user = users.find((u) => u.id === userId);
+    if (!user) return;
 
-    const conversationId = [currentUser.id, recipientId].sort().join("_");
-    const existingMessages = loadMessagesFromStorage(conversationId);
+    setSelectedUser(user);
+    setReplyingTo(null); // Clear reply when switching conversations
+
+    // Load existing messages from localStorage
+    const existingMessages = loadMessagesFromStorage(userId);
     setMessages(existingMessages);
-
-    setCurrentConversation(conversationId);
-
-    socket.emit("getConversation", { conversationId });
   };
 
   const sendMessage = (text, type = "text") => {
-    if (socket && text.trim() && currentConversation) {
-      const [user1Id, user2Id] = currentConversation.split("_");
-      const recipientId = user1Id === currentUser.id ? user2Id : user1Id;
-
+    if (socket && text.trim() && selectedUser) {
       socket.emit("privateMessage", {
-        recipientId,
+        recipientId: selectedUser.id,
         text,
         type,
+        replyTo: replyingTo,
       });
+      setReplyingTo(null); // Clear reply after sending
     }
   };
 
   const sendCodeSnippet = (code, language) => {
-    if (socket && code.trim() && currentConversation) {
-      const [user1Id, user2Id] = currentConversation.split("_");
-      const recipientId = user1Id === currentUser.id ? user2Id : user1Id;
-
+    if (socket && code.trim() && selectedUser) {
       socket.emit("codeSnippet", {
-        recipientId,
+        recipientId: selectedUser.id,
         code,
         language,
+        replyTo: replyingTo,
       });
+      setReplyingTo(null); // Clear reply after sending
     }
   };
 
   const handleTyping = (isTyping) => {
-    if (socket && currentConversation) {
-      const [user1Id, user2Id] = currentConversation.split("_");
-      const recipientId = user1Id === currentUser.id ? user2Id : user1Id;
-
-      socket.emit("typing", { recipientId, isTyping });
+    if (socket && selectedUser) {
+      socket.emit("typing", { recipientId: selectedUser.id, isTyping });
     }
   };
 
   const deleteMessage = (messageId) => {
-    if (socket && currentConversation) {
+    if (socket && selectedUser) {
       socket.emit("deleteMessage", {
         messageId,
-        conversationId: currentConversation,
+        recipientId: selectedUser.id,
       });
     }
   };
 
-  const getCurrentConversationParticipant = () => {
-    if (!currentConversation || !currentUser) return null;
+  const replyToMessage = (message) => {
+    setReplyingTo(message);
+  };
 
-    const [user1Id, user2Id] = currentConversation.split("_");
-    const otherUserId = user1Id === currentUser.id ? user2Id : user1Id;
-
-    return users.find((user) => user.id === otherUserId);
+  const cancelReply = () => {
+    setReplyingTo(null);
   };
 
   if (!socket) {
@@ -234,24 +232,24 @@ export default function ChatLayout() {
     <div className="flex h-screen bg-steel-900">
       <Sidebar
         users={users}
-        conversations={conversations}
         currentUser={currentUser}
-        currentConversation={currentConversation}
+        selectedUser={selectedUser}
         onUserSelect={handleStartConversation}
-        onConversationSelect={setCurrentConversation}
       />
 
       <div className="flex-1 flex flex-col">
-        {currentConversation ? (
+        {selectedUser ? (
           <ChatArea
             messages={messages}
             currentUser={currentUser}
-            otherUser={getCurrentConversationParticipant()}
-            conversationId={currentConversation}
+            otherUser={selectedUser}
+            replyingTo={replyingTo}
             onSendMessage={sendMessage}
             onSendCodeSnippet={sendCodeSnippet}
             onTyping={handleTyping}
             onDeleteMessage={deleteMessage}
+            onReplyToMessage={replyToMessage}
+            onCancelReply={cancelReply}
             typingUsers={Array.from(typingUsers)}
           />
         ) : (
@@ -273,10 +271,10 @@ export default function ChatLayout() {
                 </svg>
               </div>
               <h3 className="text-lg font-medium text-steel-200 mb-2">
-                Select a conversation
+                Select a user to start chatting
               </h3>
               <p className="text-steel-400">
-                Choose a user from the sidebar to start chatting
+                Choose someone from the sidebar to begin a conversation
               </p>
             </div>
           </div>

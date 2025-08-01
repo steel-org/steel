@@ -19,22 +19,14 @@ const io = socketIo(server, {
 app.use(cors());
 app.use(express.json());
 
+// Store connected users
 const connectedUsers = new Map();
-const conversations = new Map();
-const userConversations = new Map();
-
-const getConversationId = (user1Id, user2Id) => {
-  return [user1Id, user2Id].sort().join("_");
-};
-
-const getConversationParticipants = (conversationId) => {
-  return conversationId.split("_");
-};
 
 // Socket.io connection handling
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
 
+  // Handle user joining
   socket.on("join", (userData) => {
     const { username, avatar } = userData;
 
@@ -49,19 +41,8 @@ io.on("connection", (socket) => {
       lastSeen: new Date(),
     });
 
+    // Send current users list to all clients
     io.emit("users", Array.from(connectedUsers.values()));
-
-    // Send user's conversations
-    const userConversationIds = userConversations.get(socket.id) || [];
-    const userConversationsData = userConversationIds.map((convId) => ({
-      id: convId,
-      participants: getConversationParticipants(convId)
-        .map((participantId) => connectedUsers.get(participantId))
-        .filter(Boolean),
-      lastMessage: conversations.get(convId)?.slice(-1)[0] || null,
-    }));
-
-    socket.emit("userConversations", userConversationsData);
 
     // Notify others about new user
     socket.broadcast.emit("userJoined", connectedUsers.get(socket.id));
@@ -69,44 +50,23 @@ io.on("connection", (socket) => {
     console.log(`User ${username} joined the chat`);
   });
 
+  // Handle private messages
   socket.on("privateMessage", (messageData) => {
     const user = connectedUsers.get(socket.id);
     if (!user) return;
 
-    const { recipientId, text, type = "text" } = messageData;
-    const conversationId = getConversationId(socket.id, recipientId);
-
-    if (!conversations.has(conversationId)) {
-      conversations.set(conversationId, []);
-
-      [socket.id, recipientId].forEach((userId) => {
-        if (!userConversations.has(userId)) {
-          userConversations.set(userId, []);
-        }
-        if (!userConversations.get(userId).includes(conversationId)) {
-          userConversations.get(userId).push(conversationId);
-        }
-      });
-    }
+    const { recipientId, text, type = "text", replyTo = null } = messageData;
 
     const message = {
       id: Date.now().toString(),
       text,
       senderId: socket.id,
       recipientId,
-      conversationId,
       timestamp: new Date().toISOString(),
       type,
       status: "sent",
+      replyTo,
     };
-
-    // Store message
-    conversations.get(conversationId).push(message);
-
-    // Keep only last 100 messages per conversation
-    if (conversations.get(conversationId).length > 100) {
-      conversations.get(conversationId).shift();
-    }
 
     // Send to sender (for confirmation)
     socket.emit("messageReceived", message);
@@ -115,6 +75,7 @@ io.on("connection", (socket) => {
     const recipientSocket = io.sockets.sockets.get(recipientId);
     if (recipientSocket) {
       recipientSocket.emit("newMessage", message);
+      // Mark as delivered
       message.status = "delivered";
       socket.emit("messageStatusUpdate", {
         messageId: message.id,
@@ -123,32 +84,23 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Handle message read receipts
   socket.on("markAsRead", (data) => {
-    const { conversationId } = data;
+    const { senderId } = data;
     const user = connectedUsers.get(socket.id);
     if (!user) return;
 
-    const conversation = conversations.get(conversationId);
-    if (!conversation) return;
-
-    // Mark all messages from other user as read
-    const updatedMessages = conversation.map((msg) => {
-      if (msg.senderId !== socket.id && msg.status !== "read") {
-        msg.status = "read";
-        const senderSocket = io.sockets.sockets.get(msg.senderId);
-        if (senderSocket) {
-          senderSocket.emit("messageStatusUpdate", {
-            messageId: msg.id,
-            status: "read",
-          });
-        }
-      }
-      return msg;
-    });
-
-    conversations.set(conversationId, updatedMessages);
+    // Notify sender about read status
+    const senderSocket = io.sockets.sockets.get(senderId);
+    if (senderSocket) {
+      senderSocket.emit("messageStatusUpdate", {
+        messageId: data.messageId,
+        status: "read",
+      });
+    }
   });
 
+  // Handle typing indicator
   socket.on("typing", (data) => {
     const { recipientId, isTyping } = data;
     const user = connectedUsers.get(socket.id);
@@ -169,21 +121,7 @@ io.on("connection", (socket) => {
     const user = connectedUsers.get(socket.id);
     if (!user) return;
 
-    const { recipientId, code, language = "javascript" } = snippetData;
-    const conversationId = getConversationId(socket.id, recipientId);
-
-    if (!conversations.has(conversationId)) {
-      conversations.set(conversationId, []);
-
-      [socket.id, recipientId].forEach((userId) => {
-        if (!userConversations.has(userId)) {
-          userConversations.set(userId, []);
-        }
-        if (!userConversations.get(userId).includes(conversationId)) {
-          userConversations.get(userId).push(conversationId);
-        }
-      });
-    }
+    const { recipientId, code, language = "javascript", replyTo = null } = snippetData;
 
     const message = {
       id: Date.now().toString(),
@@ -191,19 +129,16 @@ io.on("connection", (socket) => {
       language,
       senderId: socket.id,
       recipientId,
-      conversationId,
       timestamp: new Date().toISOString(),
       type: "code",
       status: "sent",
+      replyTo,
     };
 
-    conversations.get(conversationId).push(message);
-    if (conversations.get(conversationId).length > 100) {
-      conversations.get(conversationId).shift();
-    }
-
+    // Send to sender
     socket.emit("messageReceived", message);
 
+    // Send to recipient if online
     const recipientSocket = io.sockets.sockets.get(recipientId);
     if (recipientSocket) {
       recipientSocket.emit("newMessage", message);
@@ -215,47 +150,19 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("getConversation", (data) => {
-    const { conversationId } = data;
-    const user = connectedUsers.get(socket.id);
-    if (!user) return;
-
-    const messages = conversations.get(conversationId) || [];
-    const participants = getConversationParticipants(conversationId);
-
-    socket.emit("conversationData", {
-      conversationId,
-      messages,
-      participants: participants
-        .map((participantId) => connectedUsers.get(participantId))
-        .filter(Boolean),
-    });
-  });
-
   // Handle message deletion
   socket.on("deleteMessage", (data) => {
-    const { messageId, conversationId } = data;
+    const { messageId, recipientId } = data;
     const user = connectedUsers.get(socket.id);
     if (!user) return;
 
-    const conversation = conversations.get(conversationId);
-    if (!conversation) return;
+    // Notify sender about deletion
+    socket.emit("messageDeleted", { messageId });
 
-    const messageIndex = conversation.findIndex(
-      (msg) => msg.id === messageId && msg.senderId === socket.id
-    );
-
-    if (messageIndex !== -1) {
-      const deletedMessage = conversation.splice(messageIndex, 1)[0];
-
-      socket.emit("messageDeleted", { messageId, conversationId });
-
-      const recipientSocket = io.sockets.sockets.get(
-        deletedMessage.recipientId
-      );
-      if (recipientSocket) {
-        recipientSocket.emit("messageDeleted", { messageId, conversationId });
-      }
+    // Notify recipient about deletion
+    const recipientSocket = io.sockets.sockets.get(recipientId);
+    if (recipientSocket) {
+      recipientSocket.emit("messageDeleted", { messageId });
     }
   });
 
@@ -266,8 +173,10 @@ io.on("connection", (socket) => {
       user.isOnline = false;
       user.lastSeen = new Date();
 
+      // Update users list
       io.emit("users", Array.from(connectedUsers.values()));
 
+      // Notify others about user going offline
       socket.broadcast.emit("userLeft", user);
 
       connectedUsers.delete(socket.id);
@@ -276,21 +185,21 @@ io.on("connection", (socket) => {
   });
 });
 
+// Health check endpoint
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
     timestamp: new Date().toISOString(),
     connectedUsers: connectedUsers.size,
-    totalConversations: conversations.size,
   });
 });
 
+// Get server info
 app.get("/info", (req, res) => {
   res.json({
     name: "Steel Private Chat Backend",
-    version: "2.0.0",
+    version: "2.1.0",
     connectedUsers: connectedUsers.size,
-    totalConversations: conversations.size,
     uptime: process.uptime(),
   });
 });
@@ -301,5 +210,5 @@ server.listen(PORT, () => {
   console.log(`🚀 Steel Private Chat Backend running on port ${PORT}`);
   console.log(`📡 Socket.io server ready for connections`);
   console.log(`🌐 Health check: http://localhost:${PORT}/health`);
-  console.log(`This is Version 2.0.0`);
+  console.log(`This is Version 2.1.0`);
 });
