@@ -1,0 +1,169 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  avatar    String?
+  status    String   @default("offline") // online, offline, away, busy
+  lastSeen  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  sentMessages     Message[] @relation("MessageSender")
+  receivedMessages Message[] @relation("MessageRecipient")
+  chatMemberships  ChatMember[]
+  messageReactions MessageReaction[]
+  messageEdits     MessageEdit[]
+  ownedGroups      Chat[] @relation("GroupOwner")
+
+  @@map("users")
+}
+
+model Chat {
+  id          String   @id @default(cuid())
+  name        String?
+  type        ChatType @default(DIRECT)
+  avatar      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastMessage DateTime?
+
+  // Relations
+  messages    Message[]
+  members     ChatMember[]
+  owner       User? @relation("GroupOwner", fields: [ownerId], references: [id])
+  ownerId     String?
+
+  @@map("chats")
+}
+
+model ChatMember {
+  id        String   @id @default(cuid())
+  role      MemberRole @default(MEMBER)
+  joinedAt  DateTime @default(now())
+  
+  // Relations
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  chat      Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  chatId    String
+
+  @@unique([userId, chatId])
+  @@map("chat_members")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  type      MessageType @default(TEXT)
+  status    MessageStatus @default(SENT)
+  replyToId String?
+  
+  // Code-specific fields
+  language  String?
+  filename  String?
+  lines     Int?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  editedAt  DateTime?
+
+  // Relations
+  sender    User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  senderId  String
+  chat      Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  chatId    String
+  replyTo   Message? @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies   Message[] @relation("MessageReplies")
+  attachments Attachment[]
+  reactions MessageReaction[]
+  edits     MessageEdit[]
+
+  @@map("messages")
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  filename  String
+  originalName String
+  mimeType  String
+  size      Int
+  url       String
+  thumbnail String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId String
+
+  @@map("attachments")
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  reaction  String // emoji or reaction type
+  createdAt DateTime @default(now())
+
+  // Relations
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId String
+
+  @@unique([userId, messageId, reaction])
+  @@map("message_reactions")
+}
+
+model MessageEdit {
+  id        String   @id @default(cuid())
+  oldContent String
+  newContent String
+  editedAt  DateTime @default(now())
+
+  // Relations
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId String
+
+  @@map("message_edits")
+}
+
+// Enums
+enum ChatType {
+  DIRECT
+  GROUP
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum MessageType {
+  TEXT
+  CODE
+  FILE
+  SYSTEM
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+} 
