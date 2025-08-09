@@ -5,7 +5,10 @@ import ChatArea from "./ChatArea";
 import UserModal from "./UserModal";
 
 const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+  process.env.NEXT_PUBLIC_WS_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  "http://localhost:5000";
 
 export default function ChatLayout() {
   const [socket, setSocket] = useState(null);
