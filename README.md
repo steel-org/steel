@@ -1,183 +1,413 @@
-# STEEL
+# Steel - Modern Desktop Messaging for Developers
 
-**code. chat. control.**
+**Code. Chat. Control.**
 
-Steel is a modular, multi-platform developer tool designed to combine real-time collaboration, Git management, terminal access, and a code editor — all in one unified app.
+A production-ready desktop chat application built for developers, featuring real-time messaging, code sharing, file attachments, and advanced collaboration features.
 
-This repository contains will the **first working module** of Steel: a real-time chat system, built to run both in the browser and inside an Electron desktop shell.
+## 🚀 Features
 
----
+### Core Messaging
 
-## 🚀 Current Module: Private Messaging
+- **Real-time messaging** with WebSocket connections
+- **One-to-one and group chats** with message history
+- **Message reactions** and read receipts
+- **Typing indicators** and online status
+- **Offline message queue** with local persistence
 
-The private messaging system allows developers to:
+### Developer Features
 
-- Send and receive private 1-on-1 messages
-- Share code snippets with syntax highlighting
-- See message status indicators (sent, delivered, read)
-- Delete their own messages
-- Use @mentions to tag users
-- View online/offline status and typing indicators
+- **Code sharing** with syntax highlighting (Monaco Editor)
+- **Inline code review** and patch creation
+- **File attachments** (images, archives, code files)
+- **Search functionality** across messages, users, and files
+- **Desktop packaging** ready for Electron/Tauri
 
-It works via WebSockets (Socket.io) with localStorage persistence and is deployable for public testing.
+### Advanced Features
 
----
+- **Group management** with roles (owner/admin/moderator)
+- **File preview** and attachment handling
+- **Message editing** and deletion
+- **Notification system** for desktop alerts
+- **Search and filtering** capabilities
 
-## 🧱 Tech Stack
+## 🏗️ Architecture
 
-| Layer      | Tech                                       |
-| ---------- | ------------------------------------------ |
-| Frontend   | Next.js (React)                            |
-| Styling    | CSS / Tailwind (optional)                  |
-| Backend    | Node.js + Express                          |
-| Realtime   | Socket.io                                  |
-| Deployment | Vercel (frontend), Render/Heroku (backend) |
+### Tech Stack
 
----
+- **Frontend**: React + TypeScript + Tailwind CSS
+- **Backend**: Node.js + Express + TypeScript
+- **Real-time**: Socket.IO with WebSocket
+- **Database**: PostgreSQL with Prisma ORM
+- **File Storage**: S3-compatible storage (MinIO/AWS)
+- **Desktop**: Electron for cross-platform packaging
+- **Code Editor**: Monaco Editor (VSCode-like experience)
 
-## 📁 Folder Structure
+### Project Structure
 
 ```
-
 steel/
-├── frontend/          # Next.js UI
-│   └── pages/
-│   └── components/
-│   └── styles/
-├── backend/           # Express + Socket.io
-│   └── index.js
-├── README.md
-└── .gitignore
-
+├── backend/                 # Node.js + Express API
+│   ├── src/
+│   │   ├── controllers/    # API route handlers
+│   │   ├── models/         # Database models
+│   │   ├── services/       # Business logic
+│   │   ├── middleware/     # Auth, validation, etc.
+│   │   └── websocket/      # Socket.IO event handlers
+│   ├── prisma/             # Database schema and migrations
+│   └── tests/              # Backend tests
+├── frontend/               # React + TypeScript app
+│   ├── src/
+│   │   ├── components/     # React components
+│   │   ├── hooks/          # Custom React hooks
+│   │   ├── services/       # API and WebSocket services
+│   │   ├── stores/         # State management
+│   │   └── utils/          # Utility functions
+│   └── public/             # Static assets
+├── desktop/                # Electron app wrapper
+│   └── src/                # Electron main process
+└── shared/                 # Shared types and utilities
+    └── types/              # TypeScript interfaces
 ```
 
----
+## 🛠️ Setup Instructions
 
-## 🔧 Local Setup
+### Prerequisites
 
-### 1. Clone the Repo
-
-```bash
-git clone https://github.com/Spectra010s/steel.git
-cd steel
-```
-
-### 2. Install Dependencies
-
-**Backend:**
-
-```bash
-cd backend
-npm install
-```
-
-**Frontend:**
-
-```bash
-cd ../frontend
-npm install
-```
-
-### 3. Run Backend (Socket.io)
-
-```bash
-cd backend
-npm run dev
-# or for production
-npm start
-```
-
-### 4. Run Frontend (Next.js)
-
-```bash
-cd ../frontend
-npm run dev
-```
-
-- Frontend: `http://localhost:3000`
-- Backend: `http://localhost:5000`
-- Health check: `http://localhost:5000/health`
-
-### 5. Test the Application
-
-1. Open `http://localhost:3000` in your browser
-2. Enter a username and join the chat
-3. Open another browser tab/window to test real-time messaging
-4. Try sharing code snippets using the code button
-
----
-
-## ☁️ Deployment
-
-### Frontend (Vercel)
-
-1. Push your code to GitHub
-2. Connect your repository to [Vercel](https://vercel.com/)
-3. Set environment variable: `NEXT_PUBLIC_BACKEND_URL` = your backend URL
-4. Deploy!
-
-### Backend (Render/Heroku)
-
-**Render:**
-
-1. Connect your GitHub repo to [Render](https://render.com/)
-2. Create a new Web Service
-3. Set build command: `npm install`
-4. Set start command: `npm start`
-5. Set environment variable: `NODE_ENV=production`
-
-**Heroku:**
-
-1. Install [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli)
-2. Create app: `heroku create your-steel-backend`
-3. Deploy: `git push heroku main`
-4. Set environment: `heroku config:set NODE_ENV=production`
+- Node.js 18+
+- PostgreSQL 13+
+- Redis (optional, for session storage)
+- MinIO or AWS S3 for file storage
 
 ### Environment Variables
 
-**Frontend:**
+Create `.env` files in both `backend/` and `frontend/` directories:
 
-- `NEXT_PUBLIC_BACKEND_URL`: Your backend server URL
+#### Backend (.env)
 
-**Backend:**
+```env
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/steel_chat"
+REDIS_URL="redis://localhost:6379"
 
-- `PORT`: Server port (auto-set by hosting)
-- `NODE_ENV`: `production` for deployment
+# File Storage
+S3_ENDPOINT="http://localhost:9000"
+S3_ACCESS_KEY="your-access-key"
+S3_SECRET_KEY="your-secret-key"
+S3_BUCKET="steel-chat-files"
+S3_REGION="us-east-1"
 
----
+# JWT
+JWT_SECRET="your-super-secret-jwt-key"
+JWT_EXPIRES_IN="7d"
 
-## 📦 Next Modules (Coming Soon)
+# Server
+PORT=5000
+NODE_ENV=development
+CORS_ORIGIN="http://localhost:3000"
 
-- 🔧 Git client (clone, commit, push, diff)
-- 💻 Embedded PowerShell terminal
-- 🧠 Code editor powered by Monaco
-- 🔗 Code sharing & review tools
-- 📦 Desktop version via Electron
+# File Upload
+MAX_FILE_SIZE=104857600  # 100MB
+ALLOWED_FILE_TYPES="image/*,application/zip,text/*,.ste,.py,.c,.cpp,.json"
+```
 
----
+#### Frontend (.env.local)
+
+```env
+NEXT_PUBLIC_API_URL="http://localhost:5000"
+NEXT_PUBLIC_WS_URL="ws://localhost:5000"
+NEXT_PUBLIC_APP_NAME="Steel"
+```
+
+### Installation
+
+1. **Clone and install dependencies**
+
+```bash
+git clone <repository-url>
+cd steel
+
+# Install backend dependencies
+cd backend
+npm install
+
+# Install frontend dependencies
+cd ../frontend
+npm install
+
+# Install desktop dependencies
+cd ../desktop
+npm install
+```
+
+2. **Setup database**
+
+```bash
+cd backend
+npx prisma generate
+npx prisma db push
+```
+
+3. **Start development servers**
+
+```bash
+# Terminal 1: Backend
+cd backend
+npm run dev
+
+# Terminal 2: Frontend
+cd frontend
+npm run dev
+
+# Terminal 3: Desktop (optional)
+cd desktop
+npm run dev
+```
+
+## 📊 Database Schema
+
+### Core Tables
+
+- `users` - User accounts and profiles
+- `chats` - Chat rooms (1:1 or groups)
+- `messages` - Chat messages with metadata
+- `attachments` - File attachments and metadata
+- `chat_members` - User membership in chats
+- `message_reactions` - Message reactions
+- `message_edits` - Message edit history
+
+### Relationships
+
+- Users can be members of multiple chats
+- Messages belong to chats and have senders
+- Attachments are linked to messages
+- Reactions are linked to messages and users
+
+## 🔌 API Endpoints
+
+### Authentication
+
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `POST /api/auth/logout` - User logout
+- `GET /api/auth/me` - Get current user
+
+### Chats
+
+- `GET /api/chats` - List user's chats
+- `POST /api/chats` - Create new chat
+- `GET /api/chats/:id` - Get chat details
+- `PUT /api/chats/:id` - Update chat settings
+
+### Messages
+
+- `GET /api/chats/:id/messages` - Get chat messages
+- `POST /api/chats/:id/messages` - Send message
+- `PUT /api/messages/:id` - Edit message
+- `DELETE /api/messages/:id` - Delete message
+
+### Files
+
+- `POST /api/upload` - Upload file
+- `GET /api/files/:id` - Get file metadata
+- `GET /api/files/:id/download` - Download file
+
+## 🔄 WebSocket Events
+
+### Client → Server
+
+```typescript
+// Join chat room
+{ event: "join_chat", payload: { chatId: string } }
+
+// Send message
+{ event: "send_message", payload: { chatId, content, type, attachments? } }
+
+// Typing indicator
+{ event: "typing", payload: { chatId, isTyping: boolean } }
+
+// Message reactions
+{ event: "react_to_message", payload: { messageId, reaction: string } }
+```
+
+### Server → Client
+
+```typescript
+// New message received
+{ event: "message_received", payload: Message }
+
+// User typing
+{ event: "user_typing", payload: { userId, username, isTyping } }
+
+// Message status update
+{ event: "message_status", payload: { messageId, status } }
+```
+
+## 🧪 Testing
+
+### Backend Tests
+
+```bash
+cd backend
+npm run test
+npm run test:watch
+npm run test:coverage
+```
+
+### Frontend Tests
+
+```bash
+cd frontend
+npm run test
+npm run test:watch
+```
+
+### E2E Tests
+
+```bash
+npm run test:e2e
+```
+
+## 📦 Building for Production
+
+### Backend
+
+```bash
+cd backend
+npm run build
+npm start
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm run build
+npm start
+```
+
+### Desktop App
+
+```bash
+cd desktop
+npm run build
+npm run package
+```
+
+## 🚀 Deployment
+
+### Backend Deployment
+
+1. Set up PostgreSQL database
+2. Configure environment variables
+3. Run database migrations
+4. Deploy to your preferred platform (Heroku, Railway, etc.)
+
+### Frontend Deployment
+
+1. Build the application
+2. Deploy to Vercel, Netlify, or your preferred platform
+
+### Desktop Distribution
+
+1. Build the desktop app
+2. Create installers for Windows, macOS, and Linux
+3. Distribute through your preferred channels
+
+## 🔒 Security Considerations
+
+- JWT-based authentication
+- File type and size validation
+- Rate limiting on API endpoints
+- CORS configuration
+- Input sanitization
+- SQL injection prevention via Prisma
+- XSS protection
+
+## 📋 Version History
+
+### v3.0.0 (Current) - Production Ready
+
+- ✅ Real-time messaging with WebSocket
+- ✅ Code sharing with Monaco Editor
+- ✅ File upload and attachment system
+- ✅ User authentication and authorization
+- ✅ Group chat management
+- ✅ Message reactions and editing
+- ✅ Search functionality
+- ✅ Desktop-ready architecture
+- ✅ Production deployment guides
+- ✅ Comprehensive testing suite
+
+### v2.1.0 (Previous)
+
+- Basic chat functionality
+- User registration and login
+- Simple message sending
+- Basic UI components
+
+### v1.0.0 (Initial)
+
+- Project foundation
+- Basic architecture setup
+- Core dependencies
+
+## 🎯 Roadmap
+
+### v4.0.0 (Next Major Release)
+
+- [ ] End-to-end encryption for messages
+- [ ] Git integration (push/pull UI)
+- [ ] Advanced search filters and indexing
+- [ ] Message threading and replies
+- [ ] Voice messages and audio sharing
+- [ ] Enhanced file preview system
+- [ ] Plugin architecture
+- [ ] Custom themes and branding
+- [ ] Mobile app companion
+- [ ] Advanced notification system
+
+### v3.1.0 (Next Minor Release)
+
+- [ ] Performance optimizations
+- [ ] Enhanced error handling
+- [ ] Improved accessibility
+- [ ] Better mobile responsiveness
+- [ ] Additional file type support
+- [ ] Enhanced search capabilities
+- [ ] User profile customization
+- [ ] Message pinning feature
+
+### v3.2.0 (Future)
+
+- [ ] Video calls integration
+- [ ] Screen sharing capabilities
+- [ ] Advanced code collaboration
+- [ ] Real-time code editing
+- [ ] Integration with external tools
+- [ ] Advanced analytics dashboard
+- [ ] Multi-language support
+- [ ] Advanced security features
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Submit a pull request
 
 ## 📄 License
 
-This project is licensed under the Apache License, Version 2.0. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
 
-**Copyright 2024 Steel Team**
+## 🆘 Support
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+For support and questions:
 
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+- Create an issue on GitHub
+- Check the documentation
+- Join our community chat
 
 ---
 
-## 🧠 Project Vision
-
-> Steel is not just another code editor. It’s a complete dev environment built for collaboration, control, and communication — all from one place.
-
-Stay tuned.
+**Steel** - Code. Chat. Control. 🚀
