@@ -145,7 +145,7 @@ export default function Sidebar({
       {/* Footer */}
       <div className="p-4 border-t border-steel-700">
         <div className="text-xs text-steel-400 text-center">
-          <p>Steel v1.0.0</p>
+          <p>Steel v3.0.2</p>
           <p>Private messaging system</p>
         </div>
       </div>
