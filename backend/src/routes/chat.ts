@@ -1,12 +1,12 @@
-import { Router, Request, Response } from 'express';
-import { prisma } from '../utils/database';
-import { auth } from '../middleware/auth';
-import { validateChat } from '../middleware/validation';
+import { Router, Request, Response } from "express";
+import { prisma } from "../utils/database";
+import { auth } from "../middleware/auth";
+import { validateChat } from "../middleware/validation";
 
 const router = Router();
 
 // Get user's chats
-router.get('/', auth, async (req: Request, res: Response) => {
+router.get("/", auth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
 
@@ -14,9 +14,9 @@ router.get('/', auth, async (req: Request, res: Response) => {
       where: {
         members: {
           some: {
-            userId
-          }
-        }
+            userId,
+          },
+        },
       },
       include: {
         members: {
@@ -27,67 +27,67 @@ router.get('/', auth, async (req: Request, res: Response) => {
                 username: true,
                 avatar: true,
                 status: true,
-                lastSeen: true
-              }
-            }
-          }
+                lastSeen: true,
+              },
+            },
+          },
         },
         messages: {
           orderBy: {
-            createdAt: 'desc'
+            createdAt: "desc",
           },
           take: 1,
           include: {
             sender: {
               select: {
                 id: true,
-                username: true
-              }
-            }
-          }
+                username: true,
+              },
+            },
+          },
         },
         owner: {
           select: {
             id: true,
-            username: true
-          }
-        }
+            username: true,
+          },
+        },
       },
       orderBy: {
-        lastMessage: 'desc'
-      }
+        lastMessage: "desc",
+      },
     });
 
-    res.json({
+    return res.json({
       success: true,
-      data: chats
+      data: chats,
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      error: 'Server error'
+      error: "Server error",
     });
   }
 });
 
 // Create new chat
-router.post('/', auth, validateChat, async (req: Request, res: Response) => {
+router.post("/", auth, validateChat, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
     const { name, type, memberIds } = req.body;
 
-    if (type === 'DIRECT') {
+    if (type === "DIRECT") {
       // For direct chats, check if chat already exists
       const existingChat = await prisma.chat.findFirst({
         where: {
-          type: 'DIRECT',
+          type: "DIRECT",
           members: {
             every: {
               userId: {
-                in: [userId, ...memberIds]
-              }
-            }
-          }
+                in: [userId, ...memberIds],
+              },
+            },
+          },
         },
         include: {
           members: {
@@ -96,18 +96,18 @@ router.post('/', auth, validateChat, async (req: Request, res: Response) => {
                 select: {
                   id: true,
                   username: true,
-                  avatar: true
-                }
-              }
-            }
-          }
-        }
+                  avatar: true,
+                },
+              },
+            },
+          },
+        },
       });
 
       if (existingChat) {
         return res.json({
           success: true,
-          data: existingChat
+          data: existingChat,
         });
       }
     }
@@ -117,68 +117,19 @@ router.post('/', auth, validateChat, async (req: Request, res: Response) => {
       data: {
         name,
         type,
-        ownerId: type === 'GROUP' ? userId : null,
+        ownerId: type === "GROUP" ? userId : null,
         members: {
           create: [
             {
               userId,
-              role: type === 'GROUP' ? 'OWNER' : 'MEMBER'
+              role: type === "GROUP" ? "OWNER" : "MEMBER",
             },
             ...memberIds.map((memberId: string) => ({
               userId: memberId,
-              role: 'MEMBER'
-            }))
-          ]
-        }
-      },
-      include: {
-        members: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-                avatar: true,
-                status: true
-              }
-            }
-          }
+              role: "MEMBER",
+            })),
+          ],
         },
-        owner: {
-          select: {
-            id: true,
-            username: true
-          }
-        }
-      }
-    });
-
-    res.status(201).json({
-      success: true,
-      data: chat
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Server error'
-    });
-  }
-});
-
-// Get chat details
-router.get('/:id', auth, async (req: Request, res: Response) => {
-  try {
-    const userId = (req as any).user.id;
-    const chatId = req.params.id;
-
-    const chat = await prisma.chat.findFirst({
-      where: {
-        id: chatId,
-        members: {
-          some: {
-            userId
-          }
-        }
       },
       include: {
         members: {
@@ -189,41 +140,90 @@ router.get('/:id', auth, async (req: Request, res: Response) => {
                 username: true,
                 avatar: true,
                 status: true,
-                lastSeen: true
-              }
-            }
-          }
+              },
+            },
+          },
         },
         owner: {
           select: {
             id: true,
-            username: true
-          }
-        }
-      }
+            username: true,
+          },
+        },
+      },
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: chat,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: "Server error",
+    });
+  }
+});
+
+// Get chat details
+router.get("/:id", auth, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const chatId = req.params.id;
+
+    const chat = await prisma.chat.findFirst({
+      where: {
+        id: chatId,
+        members: {
+          some: {
+            userId,
+          },
+        },
+      },
+      include: {
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                avatar: true,
+                status: true,
+                lastSeen: true,
+              },
+            },
+          },
+        },
+        owner: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
     });
 
     if (!chat) {
       return res.status(404).json({
         success: false,
-        error: 'Chat not found'
+        error: "Chat not found",
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
-      data: chat
+      data: chat,
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      error: 'Server error'
+      error: "Server error",
     });
   }
 });
 
 // Update chat
-router.put('/:id', auth, async (req: Request, res: Response) => {
+router.put("/:id", auth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
     const chatId = req.params.id;
@@ -234,15 +234,18 @@ router.put('/:id', auth, async (req: Request, res: Response) => {
       where: {
         userId_chatId: {
           userId,
-          chatId
-        }
-      }
+          chatId,
+        },
+      },
     });
 
-    if (!membership || (membership.role !== 'OWNER' && membership.role !== 'ADMIN')) {
+    if (
+      !membership ||
+      (membership.role !== "OWNER" && membership.role !== "ADMIN")
+    ) {
       return res.status(403).json({
         success: false,
-        error: 'Not authorized to update this chat'
+        error: "Not authorized to update this chat",
       });
     }
 
@@ -250,7 +253,7 @@ router.put('/:id', auth, async (req: Request, res: Response) => {
       where: { id: chatId },
       data: {
         name,
-        avatar
+        avatar,
       },
       include: {
         members: {
@@ -260,28 +263,28 @@ router.put('/:id', auth, async (req: Request, res: Response) => {
                 id: true,
                 username: true,
                 avatar: true,
-                status: true
-              }
-            }
-          }
-        }
-      }
+                status: true,
+              },
+            },
+          },
+        },
+      },
     });
 
-    res.json({
+    return res.json({
       success: true,
-      data: chat
+      data: chat,
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      error: 'Server error'
+      error: "Server error",
     });
   }
 });
 
 // Delete chat
-router.delete('/:id', auth, async (req: Request, res: Response) => {
+router.delete("/:id", auth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
     const chatId = req.params.id;
@@ -291,32 +294,32 @@ router.delete('/:id', auth, async (req: Request, res: Response) => {
       where: {
         userId_chatId: {
           userId,
-          chatId
-        }
-      }
+          chatId,
+        },
+      },
     });
 
-    if (!membership || membership.role !== 'OWNER') {
+    if (!membership || membership.role !== "OWNER") {
       return res.status(403).json({
         success: false,
-        error: 'Only chat owner can delete the chat'
+        error: "Only chat owner can delete the chat",
       });
     }
 
     await prisma.chat.delete({
-      where: { id: chatId }
+      where: { id: chatId },
     });
 
-    res.json({
+    return res.json({
       success: true,
-      message: 'Chat deleted successfully'
+      message: "Chat deleted successfully",
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      error: 'Server error'
+      error: "Server error",
     });
   }
 });
 
-export default router; 
+export default router;

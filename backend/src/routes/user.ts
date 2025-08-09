@@ -1,11 +1,11 @@
-import { Router, Request, Response } from 'express';
-import { prisma } from '../utils/database';
-import { auth } from '../middleware/auth';
+import { Router, Request, Response } from "express";
+import { prisma } from "../utils/database";
+import { auth } from "../middleware/auth";
 
 const router = Router();
 
 // Search users
-router.get('/', auth, async (req: Request, res: Response) => {
+router.get("/", auth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
     const query = req.query.q as string;
@@ -14,7 +14,7 @@ router.get('/', auth, async (req: Request, res: Response) => {
     if (!query || query.length < 2) {
       return res.status(400).json({
         success: false,
-        error: 'Search query must be at least 2 characters'
+        error: "Search query must be at least 2 characters",
       });
     }
 
@@ -23,40 +23,40 @@ router.get('/', auth, async (req: Request, res: Response) => {
         AND: [
           {
             OR: [
-              { username: { contains: query, mode: 'insensitive' } },
-              { email: { contains: query, mode: 'insensitive' } }
-            ]
+              { username: { contains: query, mode: "insensitive" } },
+              { email: { contains: query, mode: "insensitive" } },
+            ],
           },
-          { id: { not: userId } } // Exclude current user
-        ]
+          { id: { not: userId } }, // Exclude current user
+        ],
       },
       select: {
         id: true,
         username: true,
         avatar: true,
         status: true,
-        lastSeen: true
+        lastSeen: true,
       },
       take: limit,
       orderBy: {
-        username: 'asc'
-      }
+        username: "asc",
+      },
     });
 
-    res.json({
+    return res.json({
       success: true,
-      data: users
+      data: users,
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      error: 'Server error'
+      error: "Server error",
     });
   }
 });
 
 // Get user profile
-router.get('/:id', auth, async (req: Request, res: Response) => {
+router.get("/:id", auth, async (req: Request, res: Response) => {
   try {
     const userId = req.params.id;
 
@@ -68,31 +68,31 @@ router.get('/:id', auth, async (req: Request, res: Response) => {
         avatar: true,
         status: true,
         lastSeen: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     });
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        error: 'User not found'
+        error: "User not found",
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
-      data: user
+      data: user,
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      error: 'Server error'
+      error: "Server error",
     });
   }
 });
 
 // Update user profile
-router.put('/profile', auth, async (req: Request, res: Response) => {
+router.put("/profile", auth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
     const { username, avatar } = req.body;
@@ -102,14 +102,14 @@ router.put('/profile', auth, async (req: Request, res: Response) => {
       const existingUser = await prisma.user.findFirst({
         where: {
           username,
-          id: { not: userId }
-        }
+          id: { not: userId },
+        },
       });
 
       if (existingUser) {
         return res.status(400).json({
           success: false,
-          error: 'Username already taken'
+          error: "Username already taken",
         });
       }
     }
@@ -118,7 +118,7 @@ router.put('/profile', auth, async (req: Request, res: Response) => {
       where: { id: userId },
       data: {
         username,
-        avatar
+        avatar,
       },
       select: {
         id: true,
@@ -127,20 +127,20 @@ router.put('/profile', auth, async (req: Request, res: Response) => {
         avatar: true,
         status: true,
         lastSeen: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     });
 
-    res.json({
+    return res.json({
       success: true,
-      data: user
+      data: user,
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      error: 'Server error'
+      error: "Server error",
     });
   }
 });
 
-export default router; 
+export default router;

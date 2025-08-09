@@ -1,6 +1,6 @@
 {
   "name": "steel-backend",
-  "version": "3.0.0",
+  "version": "3.0.3",
   "description": "Modern chat backend for Steel developer tool",
   "main": "dist/index.js",
   "scripts": {
@@ -13,7 +13,8 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "postinstall": "prisma generate"
   },
   "keywords": [
     "steel",
@@ -63,5 +64,12 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "pnpm": {
+    "overrides": {}
+  },
+  "packageManager": "npm@9",
+  "overrides": {},
+  "optionalDependencies": {},
+  "resolutions": {}
 }
