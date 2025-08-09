@@ -52,8 +52,11 @@ router.post(
       });
 
       // Generate JWT token
+      const registerExpiresIn: SignOptions["expiresIn"] =
+        (process.env.JWT_EXPIRES_IN as unknown as SignOptions["expiresIn"]) ||
+        "7d";
       const jwtOptions: SignOptions = {
-        expiresIn: (process.env.JWT_EXPIRES_IN as unknown as string) || "7d",
+        expiresIn: registerExpiresIn,
       };
       const token = jwt.sign(
         { userId: user.id },
@@ -110,8 +113,11 @@ router.post("/login", validateLogin, async (req: Request, res: Response) => {
     });
 
     // Generate JWT token
+    const loginExpiresIn: SignOptions["expiresIn"] =
+      (process.env.JWT_EXPIRES_IN as unknown as SignOptions["expiresIn"]) ||
+      "7d";
     const loginJwtOptions: SignOptions = {
-      expiresIn: (process.env.JWT_EXPIRES_IN as unknown as string) || "7d",
+      expiresIn: loginExpiresIn,
     };
     const token = jwt.sign(
       { userId: user.id },

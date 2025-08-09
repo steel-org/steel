@@ -1,6 +1,6 @@
 # 📋 Steel - Version Management Guide
 
-## Current Version: v3.0.3
+## Current Version: v3.0.4
 
 Steel Chat follows [Semantic Versioning](https://semver.org/) (SemVer) for version management.
 
@@ -16,7 +16,7 @@ MAJOR.MINOR.PATCH
 
 ## Version History
 
-### v3.0.3 (Current) - Patch Release
+### v3.0.4 (Current) - Patch Release
 
 **Type**: Patch
 
@@ -25,6 +25,11 @@ MAJOR.MINOR.PATCH
 - Fixed TypeScript build errors in middleware and routes
 - Corrected jsonwebtoken typings and return paths
 - Improved Prisma logging typings
+- Fixed Prisma schema relation issues; clean build verified
+
+### v3.0.3 - Patch Release
+
+Minor maintenance and deployment improvements.
 
 ### v3.0.0 - Production Ready Release
 
@@ -269,8 +274,8 @@ MAJOR.MINOR.PATCH
 
 ### Current Version
 
-- **Backend**: v3.0.3
-- **Frontend**: v3.0.3
+- **Backend**: v3.0.4
+- **Frontend**: v3.0.4
 - **Status**: Production Ready
 
 ### Next Release

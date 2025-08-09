@@ -22,7 +22,11 @@ const upload = multer({
   limits: {
     fileSize: parseInt(process.env.MAX_FILE_SIZE || "104857600"), // 100MB default
   },
-  fileFilter: (req, file, cb) => {
+  fileFilter: (
+    req: Request,
+    file: Express.Multer.File,
+    cb: (error: Error | null, acceptFile?: boolean) => void
+  ) => {
     const allowedTypes = (process.env.ALLOWED_FILE_TYPES || "").split(",");
     if (
       allowedTypes.includes(file.mimetype) ||
