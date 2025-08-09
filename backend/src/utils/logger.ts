@@ -18,15 +18,17 @@ const shouldUseFileTransports =
   process.env.ENABLE_FILE_LOGS === "true" ||
   process.env.NODE_ENV === "development";
 
-const baseTransports = [
-  new transports.Console({
-    format: combine(
-      colorize(),
-      timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
-      logFormat
-    ),
-  }),
-];
+const consoleTransport = new transports.Console({
+  format: combine(
+    colorize(),
+    timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+    logFormat
+  ),
+});
+
+const baseTransports: Array<
+  transports.ConsoleTransportInstance | transports.FileTransportInstance
+> = [consoleTransport];
 
 if (shouldUseFileTransports) {
   baseTransports.push(
