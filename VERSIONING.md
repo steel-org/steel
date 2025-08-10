@@ -1,6 +1,6 @@
 # 📋 Steel - Version Management Guide
 
-## Current Version: v3.2.0
+## Current Version: v3.2.1
 
 Steel Chat follows [Semantic Versioning](https://semver.org/) (SemVer) for version management.
 
@@ -16,9 +16,24 @@ MAJOR.MINOR.PATCH
 
 ## Version History
 
-### v3.2.0 (Current) -Production Ready Release
+### v3.2.1 (Current) - Patch Release
 
-**Release Date**: Current
+**Release Date**: 10/08/2025
+**Status**: Production Ready
+**Type**: Patch
+
+**Changes**:
+
+- Version bump to v3.2.1 in all project files and UI components
+- Fixed backend build errors for Railway (PORT type, multer fileFilter, code paths)
+- Updated Tailwind config to scan src/ for utility classes
+- Removed version details from README.md and added clickable link to VERSIONING.md
+- Synced all UI and API version references to 3.2.1
+- Minor bug fixes and deployment improvements
+
+### v3.2.0 (Current) - Patch Release
+
+**Release Date**: 10/08/2025
 **Status**: Production Ready
 **Type**: Minor
 

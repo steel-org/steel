@@ -1,6 +1,6 @@
 {
   "name": "steel-frontend",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "Modern chat frontend for Steel developer tool",
   "private": true,
   "scripts": {
@@ -54,4 +54,3 @@
     "@testing-library/jest-dom": "^6.1.5"
   }
 }
-    
