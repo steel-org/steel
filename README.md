@@ -325,7 +325,7 @@ npm run package
 
 ## 📋 Version History
 
-### v3.0.5 (Current) - Patch
+### v3.1.0 (Current) - Minor
 
 - ✅ Real-time messaging with WebSocket
 - ✅ Code sharing with Monaco Editor
@@ -337,6 +337,14 @@ npm run package
 - ✅ Desktop-ready architecture
 - ✅ Production deployment guides
 - ✅ Comprehensive testing suite
+
+### v3.0.5 - Patch
+
+- Incremented version to v3.0.5 in README and backend API version.
+- Improved WebSocket authentication error handling and logging.
+- Enhanced user online/offline notifications and message handling in WebSocket service.
+- Updated Sidebar component to reflect the new version.
+- Refactored code for better readability and consistency across multiple files
 
 ### v2.1.0 (Previous)
 
@@ -366,7 +374,7 @@ npm run package
 - [ ] Mobile app companion
 - [ ] Advanced notification system
 
-### v3.1.0 (Next Minor Release)
+### v3.2.0 (Next Minor Release)
 
 - [ ] Performance optimizations
 - [ ] Enhanced error handling
@@ -377,7 +385,7 @@ npm run package
 - [ ] User profile customization
 - [ ] Message pinning feature
 
-### v3.2.0 (Future)
+### v3.3.0 (Future)
 
 - [ ] Video calls integration
 - [ ] Screen sharing capabilities

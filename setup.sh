@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Steel v3.0.5 - Local Development Setup Script
+# Steel v3.1.0 - Local Development Setup Script
 # This script automates the setup process for Steel development environment
 # 
 # What this script does:
