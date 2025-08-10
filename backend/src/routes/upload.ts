@@ -20,9 +20,10 @@ const upload = multer({
     // Allow only image files
     if (file.mimetype.startsWith("image/")) {
       cb(null, true);
-    } else {
-      cb(new Error("Only image files are allowed"), false);
+      return;
     }
+    cb(null, false);
+    return;
   },
 });
 
@@ -33,7 +34,10 @@ router.post("/avatar", auth, upload.single("avatar"), async (req, res) => {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    const userId = req.userId;
+    const userId = req.user && req.user.id ? req.user.id : undefined;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized: user id missing" });
+    }
     const file = req.file;
     const fileExtension = path.extname(file.originalname);
     const fileName = `avatar-${userId}-${uuidv4()}${fileExtension}`;
@@ -75,11 +79,12 @@ router.get("/avatar/:filename", (req, res) => {
     const filename = req.params.filename;
     const filePath = path.join(process.cwd(), "uploads", "avatars", filename);
 
-    if (!require("fs").existsSync(filePath)) {
+    const fs = require("fs");
+    if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: "Avatar not found" });
     }
-
     res.sendFile(filePath);
+    return;
   } catch (error) {
     logger.error("Avatar serve error:", error);
     res.status(500).json({ error: "Failed to serve avatar" });
