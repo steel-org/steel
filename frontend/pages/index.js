@@ -1,5 +1,5 @@
 import Head from "next/head";
-import ChatLayout from "../components/ChatLayout";
+import ChatLayout from "@/components/ChatLayout";
 
 export default function Home() {
   return (

@@ -325,7 +325,7 @@ npm run package
 
 ## 📋 Version History
 
-### v3.0.0 (Current) - Production Ready
+### v3.0.5 (Current) - Patch
 
 - ✅ Real-time messaging with WebSocket
 - ✅ Code sharing with Monaco Editor
