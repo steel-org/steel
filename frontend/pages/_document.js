@@ -4,20 +4,12 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
+        <meta charSet="utf-8" />
+        <meta
+          name="description"
+          content="Steel - Modern Developer Chat Platform v3.1.0"
         />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
+        <link rel="icon" href="/favicon.ico" />
       </Head>
       <body>
         <Main />

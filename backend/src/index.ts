@@ -1,27 +1,27 @@
 import express from "express";
-import { createServer } from "http";
-import { Server } from "socket.io";
+import http from "http";
 import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
-import dotenv from "dotenv";
-
-import { setupWebSocket } from "./websocket";
+import { Server } from "socket.io";
 import { setupRoutes } from "./routes";
-import { errorHandler } from "./middleware/errorHandler";
+import { setupWebSocket } from "./websocket";
 import { logger } from "./utils/logger";
-import { connectDatabase } from "./utils/database";
+import { errorHandler } from "./middleware/errorHandler";
+import dotenv from "dotenv";
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
-const server = createServer(app);
+const server = http.createServer(app);
+
+// Initialize Socket.IO
 const io = new Server(server, {
   cors: {
     origin: process.env.CORS_ORIGIN || "http://localhost:3000",
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST"],
     credentials: true,
   },
 });
@@ -36,73 +36,59 @@ const limiter = rateLimit({
   max: 100, // limit each IP to 100 requests per windowMs
   message: "Too many requests from this IP, please try again later.",
 });
-app.use("/api/", limiter);
+app.use(limiter);
 
-// CORS
-app.use(
-  cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
-    credentials: true,
-  })
-);
+// CORS configuration
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+  credentials: true,
+}));
 
 // Body parsing middleware
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
-// Health check endpoint
-app.get("/health", (req: express.Request, res: express.Response) => {
-  res.json({
-    status: "ok",
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV,
-  });
-});
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Setup routes
 setupRoutes(app);
 
-// Setup WebSocket
+// Setup WebSocket handlers
 setupWebSocket(io);
+
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "Server is running",
+    version: "3.0.6",
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // Error handling middleware (must be last)
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-async function startServer() {
-  try {
-    // Connect to database
-    await connectDatabase();
+server.listen(PORT, "0.0.0.0", () => {
+  logger.info(`🚀 Steel Backend v3.0.6 running on port ${PORT}`);
+  logger.info(`📡 Socket.io server ready for connections`);
+  logger.info(`🌐 Health check: http://0.0.0.0:${PORT}/api/health`);
+  logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});
 
-    // Start server
-    server.listen(PORT, () => {
-      logger.info(`🚀 Steel Chat Backend running on port ${PORT}`);
-      logger.info(`📡 Socket.IO server ready for connections`);
-      logger.info(`🌐 Health check: http://localhost:${PORT}/health`);
-      logger.info(`🔗 API docs: http://localhost:${PORT}/api/docs`);
-      logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
-    });
-  } catch (error) {
-    logger.error("Failed to start server:", error);
-    process.exit(1);
-  }
-}
-
-// Handle graceful shutdown
-process.on("SIGTERM", () => {
-  logger.info("SIGTERM received, shutting down gracefully");
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received, shutting down gracefully');
   server.close(() => {
-    logger.info("Process terminated");
+    logger.info('Server closed');
+    process.exit(0);
   });
 });
 
-process.on("SIGINT", () => {
-  logger.info("SIGINT received, shutting down gracefully");
+process.on('SIGINT', () => {
+  logger.info('SIGINT received, shutting down gracefully');
   server.close(() => {
-    logger.info("Process terminated");
+    logger.info('Server closed');
+    process.exit(0);
   });
 });
-
-startServer();

@@ -1,6 +1,6 @@
 {
   "name": "steel-frontend",
-  "version": "3.0.5",
+  "version": "3.1.0",
   "description": "Modern chat frontend for Steel developer tool",
   "private": true,
   "scripts": {

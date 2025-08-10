@@ -121,7 +121,12 @@ io.on("connection", (socket) => {
     const user = connectedUsers.get(socket.id);
     if (!user) return;
 
-    const { recipientId, code, language = "javascript", replyTo = null } = snippetData;
+    const {
+      recipientId,
+      code,
+      language = "javascript",
+      replyTo = null,
+    } = snippetData;
 
     const message = {
       id: Date.now().toString(),
@@ -198,7 +203,7 @@ app.get("/health", (req, res) => {
 app.get("/info", (req, res) => {
   res.json({
     name: "Steel Private Chat Backend",
-    version: "2.1.0",
+    version: "3.1.0",
     connectedUsers: connectedUsers.size,
     uptime: process.uptime(),
   });
@@ -209,6 +214,6 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Steel Private Chat Backend running on port ${PORT}`);
   console.log(`📡 Socket.io server ready for connections`);
-  console.log(`🌐 Health check: http://localhost:${PORT}/health`);
-  console.log(`This is Version 2.1.0`);
+  console.log(`🌐 Health check: http://0.0.0.0:${PORT}/health`);
+  console.log(`This is Version 3.1.0`);
 });
