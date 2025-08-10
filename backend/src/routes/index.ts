@@ -2,8 +2,9 @@ import { Express, Request, Response } from "express";
 import authRoutes from "./auth";
 import chatRoutes from "./chat";
 import messageRoutes from "./message";
-import fileRoutes from "./file";
 import userRoutes from "./user";
+import fileRoutes from "./file";
+import uploadRoutes from "./upload";
 
 export const setupRoutes = (app: Express) => {
   // API routes
@@ -12,12 +13,13 @@ export const setupRoutes = (app: Express) => {
   app.use("/api/messages", messageRoutes);
   app.use("/api/files", fileRoutes);
   app.use("/api/users", userRoutes);
+  app.use("/api/upload", uploadRoutes);
 
   // API documentation
   app.get("/api/docs", (req: Request, res: Response) => {
     res.json({
       name: "Steel Chat API",
-      version: "3.0.0",
+      version: "3.2.0",
       endpoints: {
         auth: {
           "POST /api/auth/register": "Register new user",
@@ -46,6 +48,9 @@ export const setupRoutes = (app: Express) => {
         users: {
           "GET /api/users": "Search users",
           "GET /api/users/:id": "Get user profile",
+        },
+        upload: {
+          "POST /api/upload/avatar": "Upload user avatar",
         },
       },
       websocket: {
