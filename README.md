@@ -325,7 +325,14 @@ npm run package
 
 ## 📋 Version History
 
-### v3.1.0 (Current) - Minor
+### v3.2.0 (Current) - Minor
+
+- ✅ Version bump to v3.2.0 in all project files
+- ✅ Updated documentation and deployment guides
+- ✅ Prepared for new features and optimizations
+- ✅ Added avatar upload and serving endpoints in backend.
+
+### v3.1.0 (Previous) - Minor
 
 - ✅ Real-time messaging with WebSocket
 - ✅ Code sharing with Monaco Editor
@@ -374,7 +381,7 @@ npm run package
 - [ ] Mobile app companion
 - [ ] Advanced notification system
 
-### v3.2.0 (Next Minor Release)
+### v3.3.0 (Next Minor Release)
 
 - [ ] Performance optimizations
 - [ ] Enhanced error handling
@@ -385,7 +392,7 @@ npm run package
 - [ ] User profile customization
 - [ ] Message pinning feature
 
-### v3.3.0 (Future)
+### v3.4.0 (Future)
 
 - [ ] Video calls integration
 - [ ] Screen sharing capabilities

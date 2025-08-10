@@ -1,6 +1,5 @@
-
-import React from 'react';
-import { X, Mail, Calendar, MapPin, Link as LinkIcon } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Mail, Calendar, MapPin, Link as LinkIcon, Upload, User, Camera } from 'lucide-react';
 import { User } from '../types';
 
 interface UserModalProps {
@@ -12,12 +11,125 @@ interface UserModalProps {
 const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
   if (!isOpen) return null;
 
+  const [username, setUsername] = useState(user.username || '');
+  const [displayName, setDisplayName] = useState(user.displayName || '');
+  const [status, setStatus] = useState(user.status || 'online');
+  const [avatar, setAvatar] = useState(user.avatar || '');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const formatJoinDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     }).format(new Date(date));
+  };
+
+  const generateAvatar = () => {
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3', '#54A0FF'];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const initials = (displayName || username).slice(0, 2).toUpperCase();
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 100;
+    canvas.height = 100;
+    const ctx = canvas.getContext('2d');
+
+    if (ctx) {
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, 100, 100);
+      ctx.fillStyle = 'white';
+      ctx.font = '36px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(initials, 50, 50);
+    }
+
+    return canvas.toDataURL();
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB');
+      return;
+    }
+
+    setAvatarFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setAvatar(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const uploadAvatarToServer = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/upload/avatar`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('steel-token')}`
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      return data.avatarUrl;
+    } catch (error) {
+      console.error('Avatar upload failed:', error);
+      throw error;
+    }
+  };
+
+  const onSave = async () => {
+    setIsUploading(true);
+
+    try {
+      let finalAvatar = avatar;
+
+      // If user uploaded a new avatar file, upload it to server
+      if (avatarFile) {
+        finalAvatar = await uploadAvatarToServer(avatarFile);
+      } else if (!avatar) {
+        // Generate default avatar if none exists
+        finalAvatar = generateAvatar();
+      }
+
+      // This is a placeholder for the actual save logic, assuming an onSave prop exists
+      // In a real application, you would call an API to update the user's profile.
+      console.log('Saving user data:', {
+        username,
+        displayName,
+        status,
+        avatar: finalAvatar
+      });
+      // onClose(); // Uncomment when onSave logic is fully implemented
+    } catch (error) {
+      console.error('Failed to save user profile:', error);
+      alert('Failed to save profile. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -38,24 +150,81 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
         <div className="p-6">
           {/* Avatar and Basic Info */}
           <div className="flex flex-col items-center mb-6">
-            <img
-              src={user.avatar || '/default-avatar.png'}
-              alt={user.username}
-              className="w-24 h-24 rounded-full mb-4 border-4 border-gray-200"
-            />
-            <h3 className="text-2xl font-bold text-gray-900 mb-1">
-              {user.username}
+            <div className="flex flex-col items-center space-y-2">
+              <div className="relative group">
+                <div className="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
+                  {avatar ? (
+                    <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-8 h-8 text-gray-600" />
+                  )}
+                </div>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Camera className="w-6 h-6 text-white" />
+                </button>
+              </div>
+
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center space-x-1"
+                >
+                  <Upload className="w-3 h-3" />
+                  <span>Upload</span>
+                </button>
+                <button
+                  onClick={() => setAvatar(generateAvatar())}
+                  className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
+                >
+                  Generate
+                </button>
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                className="hidden"
+              />
+            </div>
+
+            <h3 className="text-2xl font-bold text-gray-900 mb-1 mt-4">
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="text-center w-full border-b-2 border-transparent focus:border-blue-500 outline-none"
+                placeholder="Username"
+              />
             </h3>
             {user.displayName && user.displayName !== user.username && (
-              <p className="text-gray-600 mb-2">{user.displayName}</p>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="text-center text-gray-600 mb-2 w-full border-b-2 border-transparent focus:border-blue-500 outline-none"
+                placeholder="Display Name"
+              />
             )}
             <div className="flex items-center space-x-2">
               <div className={`w-3 h-3 rounded-full ${
-                user.status === 'online' ? 'bg-green-500' : 
-                user.status === 'away' ? 'bg-yellow-500' : 'bg-gray-500'
+                status === 'online' ? 'bg-green-500' :
+                status === 'away' ? 'bg-yellow-500' : 'bg-gray-500'
               }`} />
               <span className="text-sm text-gray-600 capitalize">
-                {user.status || 'offline'}
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="bg-transparent capitalize outline-none cursor-pointer"
+                >
+                  <option value="online">Online</option>
+                  <option value="away">Away</option>
+                  <option value="offline">Offline</option>
+                </select>
               </span>
             </div>
           </div>
@@ -64,7 +233,12 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
           {user.bio && (
             <div className="mb-6">
               <h4 className="text-sm font-semibold text-gray-900 mb-2">About</h4>
-              <p className="text-gray-700 leading-relaxed">{user.bio}</p>
+              <textarea
+                value={user.bio} // Assuming bio is not editable in this modal, otherwise use a state variable
+                className="w-full p-2 border border-gray-200 rounded-md resize-none"
+                rows={3}
+                readOnly
+              />
             </div>
           )}
 
@@ -142,12 +316,28 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
 
         {/* Footer */}
         <div className="px-6 py-4 bg-gray-50 rounded-b-lg">
-          <button
-            onClick={onClose}
-            className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
-          >
-            Close
-          </button>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onSave}
+              disabled={isUploading}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              {isUploading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <span>Save</span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

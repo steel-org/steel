@@ -1,11 +1,10 @@
-
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, Code, Smile, X, Reply } from 'lucide-react';
-import { useChatStore } from '@/stores/chatStore';
-import { Message } from '@/types';
-import MessageComponent from './Message';
-import MessageInput from './MessageInput';
-import CodeInput from './CodeInput';
+import React, { useState, useRef, useEffect } from "react";
+import { Send, Code, Smile, X, Reply } from "lucide-react";
+import { useChatStore } from "@/stores/chatStore";
+import { Message } from "@/types";
+import MessageComponent from "./Message";
+import MessageInput from "./MessageInput";
+import CodeInput from "./CodeInput";
 
 interface ChatAreaProps {
   replyingTo: Message | null;
@@ -31,11 +30,15 @@ export default function ChatArea({
   const [showCodeInput, setShowCodeInput] = useState(false);
 
   const chatMessages = selectedChat ? messages[selectedChat.id] || [] : [];
-  const otherUser = selectedChat?.participants.find(p => p.id !== currentUser?.id);
-  const chatTypingUsers = selectedChat ? Array.from(typingUsers[selectedChat.id] || new Set()) : [];
+  const otherUser = selectedChat?.participants.find(
+    (p) => p.id !== currentUser?.id
+  );
+  const chatTypingUsers = selectedChat
+    ? Array.from(typingUsers[selectedChat.id] || new Set())
+    : [];
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -91,14 +94,21 @@ export default function ChatArea({
       <div className="bg-gray-800 border-b border-gray-700 p-4">
         <div className="flex items-center space-x-3">
           <img
-            src={otherUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${otherUser.username}`}
+            src={
+              otherUser.avatar ||
+              `https://api.dicebear.com/7.x/avataaars/svg?seed=${otherUser.username}`
+            }
             alt={otherUser.username}
             className="w-10 h-10 rounded-full"
           />
           <div>
-            <h2 className="text-lg font-semibold text-gray-100">{otherUser.username}</h2>
+            <h2 className="text-lg font-semibold text-gray-100">
+              {otherUser.username}
+            </h2>
             <p className="text-sm text-gray-400">
-              {otherUser.isOnline ? 'Online' : `Last seen ${otherUser.lastSeen}`}
+              {otherUser.isOnline
+                ? "Online"
+                : `Last seen ${otherUser.lastSeen}`}
             </p>
           </div>
         </div>
@@ -111,7 +121,10 @@ export default function ChatArea({
             <div className="flex items-center space-x-2">
               <Reply className="w-4 h-4 text-blue-400" />
               <span className="text-sm text-gray-300">
-                Replying to {replyingTo.senderId === currentUser?.id ? 'yourself' : otherUser.username}
+                Replying to{" "}
+                {replyingTo.senderId === currentUser?.id
+                  ? "yourself"
+                  : otherUser.username}
               </span>
             </div>
             <button
@@ -139,12 +152,15 @@ export default function ChatArea({
             onReplyToMessage={onReplyToMessage}
           />
         ))}
-        
+
         {/* Typing Indicator */}
         {chatTypingUsers.length > 0 && (
           <div className="flex items-center space-x-2">
             <img
-              src={otherUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${otherUser.username}`}
+              src={
+                otherUser.avatar ||
+                `https://api.dicebear.com/7.x/avataaars/svg?seed=${otherUser.username}`
+              }
               alt={otherUser.username}
               className="w-6 h-6 rounded-full"
             />
@@ -159,13 +175,19 @@ export default function ChatArea({
               <span>is typing...</span>
               <div className="flex space-x-1">
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div
+                  className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                  style={{ animationDelay: "0.1s" }}
+                ></div>
+                <div
+                  className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                  style={{ animationDelay: "0.2s" }}
+                ></div>
               </div>
             </div>
           </div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
 
@@ -185,7 +207,7 @@ export default function ChatArea({
                 replyingTo
                   ? `Reply to ${
                       replyingTo.senderId === currentUser?.id
-                        ? 'your message'
+                        ? "your message"
                         : otherUser.username
                     }...`
                   : `Message ${otherUser.username}...`

@@ -1,6 +1,6 @@
 # 📋 Steel - Version Management Guide
 
-## Current Version: v3.1.0
+## Current Version: v3.2.0
 
 Steel Chat follows [Semantic Versioning](https://semver.org/) (SemVer) for version management.
 
@@ -16,9 +16,25 @@ MAJOR.MINOR.PATCH
 
 ## Version History
 
-### v3.1.0 (Current) -Production Ready Release
+### v3.2.0 (Current) -Production Ready Release
 
 **Release Date**: Current
+**Status**: Production Ready
+**Type**: Minor
+
+**Changes**:
+
+- Version bump to v3.2.0 in all project files
+- Updated documentation and deployment guides
+- Added avatar upload and serving endpoints in backend.
+- Improved `UserModal` in frontend to support avatar upload, preview, and status selection.
+- Updated `AuthModal` and other UI components to reflect new version and features.
+- Updated deployment and versioning guides for v3.2.0.
+- Minor bug fixes and refactoring for consistency.
+
+### v3.1.0 - Previous Minor Release
+
+**Release Date**: 10/08/2025
 **Status**: Production Ready
 **Type**: Minor
 
@@ -141,7 +157,7 @@ MAJOR.MINOR.PATCH
 
 ## Future Version Planning
 
-### v3.2.0 (Next Minor Release)
+### v3.3.0 (Next Minor Release)
 
 **Target Date**: TBD
 **Type**: Minor Release (New Features)
@@ -157,7 +173,7 @@ MAJOR.MINOR.PATCH
 - [ ] User profile customization
 - [ ] Message pinning feature
 
-### v3.3.0 (Future Minor Release)
+### v3.4.0 (Future Minor Release)
 
 **Target Date**: TBD
 **Type**: Minor Release (New Features)
@@ -193,7 +209,7 @@ MAJOR.MINOR.PATCH
 
 ## Version Update Process
 
-### For Minor Releases (v3.2.0, v3.3.0, etc.)
+### For Minor Releases (v3.3.0, v3.4.0, etc.)
 
 1. **Update package.json versions**
 
@@ -331,13 +347,13 @@ MAJOR.MINOR.PATCH
 
 ### Current Version
 
-- **Backend**: v3.1.0
-- **Frontend**: v3.1.0
+- **Backend**: v3.2.0
+- **Frontend**: v32.0
 - **Status**: Production Ready
 
 ### Next Release
 
-- **Target**: v3.2.0
+- **Target**: v3.3.0
 - **Type**: Minor Release
 - **Focus**: Performance and UX improvements
 
