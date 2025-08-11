@@ -1,6 +1,15 @@
-import React, { useState, useRef } from 'react';
-import { X, Mail, Calendar, MapPin, Link as LinkIcon, Upload, User, Camera } from 'lucide-react';
-import { User } from '../types';
+import React, { useState, useRef } from "react";
+import {
+  X,
+  Mail,
+  Calendar,
+  MapPin,
+  Link as LinkIcon,
+  Upload,
+  User,
+  Camera,
+} from "lucide-react";
+import { User } from "../types";
 
 interface UserModalProps {
   user: User;
@@ -11,58 +20,69 @@ interface UserModalProps {
 const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
   if (!isOpen) return null;
 
-  const [username, setUsername] = useState(user.username || '');
-  const [displayName, setDisplayName] = useState(user.displayName || '');
-  const [status, setStatus] = useState(user.status || 'online');
-  const [avatar, setAvatar] = useState(user.avatar || '');
+  const [username, setUsername] = useState(user.username || "");
+  const [displayName, setDisplayName] = useState(user.displayName || "");
+  const [status, setStatus] = useState(user.status || "online");
+  const [avatar, setAvatar] = useState(user.avatar || "");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [bio, setBio] = useState(user.bio || "");
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatJoinDate = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     }).format(new Date(date));
   };
 
   const generateAvatar = () => {
-    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3', '#54A0FF'];
+    const colors = [
+      "#FF6B6B",
+      "#4ECDC4",
+      "#45B7D1",
+      "#96CEB4",
+      "#FECA57",
+      "#FF9FF3",
+      "#54A0FF",
+    ];
     const color = colors[Math.floor(Math.random() * colors.length)];
     const initials = (displayName || username).slice(0, 2).toUpperCase();
 
-    const canvas = document.createElement('canvas');
+    const canvas = document.createElement("canvas");
     canvas.width = 100;
     canvas.height = 100;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
 
     if (ctx) {
       ctx.fillStyle = color;
       ctx.fillRect(0, 0, 100, 100);
-      ctx.fillStyle = 'white';
-      ctx.font = '36px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.fillStyle = "white";
+      ctx.font = "36px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
       ctx.fillText(initials, 50, 50);
     }
 
     return canvas.toDataURL();
   };
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file");
       return;
     }
 
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB');
+      alert("File size must be less than 5MB");
       return;
     }
 
@@ -78,25 +98,28 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
 
   const uploadAvatarToServer = async (file: File): Promise<string> => {
     const formData = new FormData();
-    formData.append('avatar', file);
+    formData.append("avatar", file);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/upload/avatar`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('steel-token')}`
-        },
-        body: formData
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/upload/avatar`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("steel-token")}`,
+          },
+          body: formData,
+        }
+      );
 
       if (!response.ok) {
-        throw new Error('Upload failed');
+        throw new Error("Upload failed");
       }
 
       const data = await response.json();
       return data.avatarUrl;
     } catch (error) {
-      console.error('Avatar upload failed:', error);
+      console.error("Avatar upload failed:", error);
       throw error;
     }
   };
@@ -107,26 +130,38 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
     try {
       let finalAvatar = avatar;
 
-      // If user uploaded a new avatar file, upload it to server
       if (avatarFile) {
         finalAvatar = await uploadAvatarToServer(avatarFile);
       } else if (!avatar) {
-        // Generate default avatar if none exists
         finalAvatar = generateAvatar();
       }
 
-      // This is a placeholder for the actual save logic, assuming an onSave prop exists
-      // In a real application, you would call an API to update the user's profile.
-      console.log('Saving user data:', {
-        username,
-        displayName,
-        status,
-        avatar: finalAvatar
-      });
-      // onClose(); // Uncomment when onSave logic is fully implemented
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/users/profile`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("steel-token")}`,
+          },
+          body: JSON.stringify({
+            username,
+            displayName,
+            status,
+            avatar: finalAvatar,
+            bio,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update profile");
+      }
+
+      onClose();
     } catch (error) {
-      console.error('Failed to save user profile:', error);
-      alert('Failed to save profile. Please try again.');
+      console.error("Failed to save user profile:", error);
+      alert("Failed to save profile. Please try again.");
     } finally {
       setIsUploading(false);
     }
@@ -154,7 +189,11 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
               <div className="relative group">
                 <div className="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
                   {avatar ? (
-                    <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+                    <img
+                      src={avatar}
+                      alt="Avatar"
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     <User className="w-8 h-8 text-gray-600" />
                   )}
@@ -211,10 +250,15 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
               />
             )}
             <div className="flex items-center space-x-2">
-              <div className={`w-3 h-3 rounded-full ${
-                status === 'online' ? 'bg-green-500' :
-                status === 'away' ? 'bg-yellow-500' : 'bg-gray-500'
-              }`} />
+              <div
+                className={`w-3 h-3 rounded-full ${
+                  status === "online"
+                    ? "bg-green-500"
+                    : status === "away"
+                    ? "bg-yellow-500"
+                    : "bg-gray-500"
+                }`}
+              />
               <span className="text-sm text-gray-600 capitalize">
                 <select
                   value={status}
@@ -230,17 +274,16 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
           </div>
 
           {/* Bio */}
-          {user.bio && (
-            <div className="mb-6">
-              <h4 className="text-sm font-semibold text-gray-900 mb-2">About</h4>
-              <textarea
-                value={user.bio} // Assuming bio is not editable in this modal, otherwise use a state variable
-                className="w-full p-2 border border-gray-200 rounded-md resize-none"
-                rows={3}
-                readOnly
-              />
-            </div>
-          )}
+          <div className="mb-6">
+            <h4 className="text-sm font-semibold text-gray-900 mb-2">About</h4>
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              className="w-full p-2 border border-gray-200 rounded-md resize-none"
+              rows={3}
+              placeholder="Write something about yourself..."
+            />
+          </div>
 
           {/* Details */}
           <div className="space-y-4">
@@ -283,7 +326,9 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
           {/* Roles/Badges */}
           {user.roles && user.roles.length > 0 && (
             <div className="mt-6">
-              <h4 className="text-sm font-semibold text-gray-900 mb-2">Roles</h4>
+              <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                Roles
+              </h4>
               <div className="flex flex-wrap gap-2">
                 {user.roles.map((role, index) => (
                   <span
