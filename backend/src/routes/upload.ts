@@ -62,14 +62,14 @@ router.post("/avatar", auth, upload.single("avatar"), async (req, res) => {
 
     logger.info(`Avatar uploaded for user ${userId}: ${fileName}`);
 
-    res.json({
+    return res.json({
       success: true,
       avatarUrl,
       message: "Avatar uploaded successfully",
     });
   } catch (error) {
     logger.error("Avatar upload error:", error);
-    res.status(500).json({ error: "Failed to upload avatar" });
+    return res.status(500).json({ error: "Failed to upload avatar" });
   }
 });
 
@@ -83,11 +83,10 @@ router.get("/avatar/:filename", (req, res) => {
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: "Avatar not found" });
     }
-    res.sendFile(filePath);
-    return;
+    return res.sendFile(filePath);
   } catch (error) {
     logger.error("Avatar serve error:", error);
-    res.status(500).json({ error: "Failed to serve avatar" });
+    return res.status(500).json({ error: "Failed to serve avatar" });
   }
 });
 

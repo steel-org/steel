@@ -1,6 +1,6 @@
 # 📋 Steel - Version Management Guide
 
-## Current Version: v3.2.1
+## Current Version: v3.2.2
 
 Steel Chat follows [Semantic Versioning](https://semver.org/) (SemVer) for version management.
 
@@ -16,7 +16,22 @@ MAJOR.MINOR.PATCH
 
 ## Version History
 
-### v3.2.1 (Current) - Patch Release
+### v3.2.2 (Current) - Patch Release
+
+**Release Date**: 11/08/2025
+**Status**: Production Ready
+**Type**: Patch
+
+**Changes**:
+
+- Version bump to v3.2.2 in documentation.
+- Added S3/MinIO environment variables to backend env.example for persistent file and avatar storage.
+- Fixed TypeScript errors in backend/src/routes/upload.ts
+- Updated deployment instructions for S3/MinIO support.
+- Made bio field in UserModal editable and included in profile update API.
+- Minor bug fixes and deployment improvements.
+
+### v3.2.1 - Patch Release
 
 **Release Date**: 10/08/2025
 **Status**: Production Ready
@@ -31,10 +46,9 @@ MAJOR.MINOR.PATCH
 - Synced all UI and API version references to 3.2.1
 - Minor bug fixes and deployment improvements
 
-### v3.2.0 (Current) - Patch Release
+### v3.2.0 - Previous Minor Release
 
 **Release Date**: 10/08/2025
-**Status**: Production Ready
 **Type**: Minor
 
 **Changes**:
@@ -50,7 +64,6 @@ MAJOR.MINOR.PATCH
 ### v3.1.0 - Previous Minor Release
 
 **Release Date**: 10/08/2025
-**Status**: Production Ready
 **Type**: Minor
 
 **Changes**:
@@ -362,8 +375,8 @@ MAJOR.MINOR.PATCH
 
 ### Current Version
 
-- **Backend**: v3.2.0
-- **Frontend**: v32.0
+- **Backend**: v3.2.2
+- **Frontend**: v3.2.2
 - **Status**: Production Ready
 
 ### Next Release
