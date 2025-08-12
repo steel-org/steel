@@ -2,10 +2,13 @@ export interface User {
   id: string;
   username: string;
   email: string;
+  displayName?: string;
   avatar?: string;
   status: 'online' | 'offline' | 'away' | 'busy';
   lastSeen: string;
   createdAt: string;
+  bio?: string;
+  location?: string;
 }
 
 export interface Chat {

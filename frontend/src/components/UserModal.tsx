@@ -6,7 +6,7 @@ import {
   MapPin,
   Link as LinkIcon,
   Upload,
-  User,
+  User as UserIcon,
   Camera,
 } from "lucide-react";
 import { User } from "../types";
