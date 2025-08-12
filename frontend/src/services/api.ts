@@ -58,10 +58,10 @@ class ApiService {
   }
 
   // Authentication
-  async register(email: string, username: string, password: string): Promise<AuthResponse> {
+  async register(username: string, email: string, password: string): Promise<AuthResponse> {
     const response = await this.request<AuthResponse>('/api/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, username, password }),
+      body: JSON.stringify({ username, email, password }),
     });
     
     if (response.success && response.data?.token) {
@@ -71,10 +71,10 @@ class ApiService {
     return response.data!;
   }
 
-  async login(email: string, password: string): Promise<AuthResponse> {
+  async login(username: string, password: string): Promise<AuthResponse> {
     const response = await this.request<AuthResponse>('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     });
     
     if (response.success && response.data?.token) {
