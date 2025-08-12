@@ -39,7 +39,7 @@ router.post(
           username,
           email,
           password: hashedPassword,
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=3b82f6&color=ffffff&size=128&rounded=true`,
         },
         select: {
           id: true,

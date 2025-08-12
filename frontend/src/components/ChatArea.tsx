@@ -96,7 +96,7 @@ export default function ChatArea({
           <img
             src={
               otherUser.avatar ||
-              `https://api.dicebear.com/7.x/avataaars/svg?seed=${otherUser.username}`
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(otherUser.username)}&background=3b82f6&color=ffffff&size=128&rounded=true`
             }
             alt={otherUser.username}
             className="w-10 h-10 rounded-full"
@@ -159,7 +159,7 @@ export default function ChatArea({
             <img
               src={
                 otherUser.avatar ||
-                `https://api.dicebear.com/7.x/avataaars/svg?seed=${otherUser.username}`
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(otherUser.username)}&background=3b82f6&color=ffffff&size=128&rounded=true`
               }
               alt={otherUser.username}
               className="w-6 h-6 rounded-full"

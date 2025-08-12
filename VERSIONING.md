@@ -1,6 +1,6 @@
 # 📋 Steel - Version Management Guide
 
-## Current Version: v3.2.3
+## Current Version: v3.2.4
 
 Steel Chat follows [Semantic Versioning](https://semver.org/) (SemVer) for version management.
 
@@ -16,10 +16,23 @@ MAJOR.MINOR.PATCH
 
 ## Version History
 
-### v3.2.3 (Current) - Patch Release
+### v3.2.4 (Current) - Patch Release
 
 **Release Date**: 12/08/2025
 **Status**: Production Ready
+**Type**: Patch
+
+**Changes**:
+
+- Fixed DiceBear avatar API timeout issues by switching to UI Avatars service
+- Improved avatar reliability and fallback system
+- Version bump to v3.2.4 in all project files and UI components
+- Minor performance improvements and bug fixes
+
+### v3.2.3 (Previous) - Patch Release
+
+**Release Date**: 12/08/2025
+**Status**: Deprecated
 **Type**: Patch
 
 **Changes**:
@@ -33,7 +46,7 @@ MAJOR.MINOR.PATCH
 ### v3.2.2 (Previous) - Patch Release
 
 **Release Date**: 11/08/2025
-**Status**: Production Ready
+**Status**: Deprecated
 **Type**: Patch
 
 **Changes**:
@@ -48,7 +61,7 @@ MAJOR.MINOR.PATCH
 ### v3.2.1 - Patch Release
 
 **Release Date**: 10/08/2025
-**Status**: Production Ready
+**Status**: Deprecated
 **Type**: Patch
 
 **Changes**:
@@ -63,6 +76,7 @@ MAJOR.MINOR.PATCH
 ### v3.2.0 - Previous Minor Release
 
 **Release Date**: 10/08/2025
+**Status**: Deprecated
 **Type**: Minor
 
 **Changes**:
@@ -78,6 +92,7 @@ MAJOR.MINOR.PATCH
 ### v3.1.0 - Previous Minor Release
 
 **Release Date**: 10/08/2025
+**Status**: Deprecated
 **Type**: Minor
 
 **Changes**:
@@ -94,6 +109,7 @@ MAJOR.MINOR.PATCH
 
 ### v3.0.5 - Patch Release
 
+**Status**: Deprecated
 **Type**: Patch
 
 **Changes**:
@@ -106,6 +122,7 @@ MAJOR.MINOR.PATCH
 
 ### v3.0.4 - Patch Release
 
+**Status**: Deprecated
 **Type**: Patch
 
 **Changes**:
@@ -117,6 +134,7 @@ MAJOR.MINOR.PATCH
 
 ### v3.0.3 - Patch Release
 
+**Status**: Deprecated
 **Type**: Patch
 
 **Changes**:
@@ -130,6 +148,7 @@ MAJOR.MINOR.PATCH
 
 ### v3.0.2 - Patch Release
 
+**Status**: Deprecated
 **Type**: Patch
 
 **Changes**:
@@ -140,6 +159,7 @@ MAJOR.MINOR.PATCH
 
 ### v3.0.1 - Patch Release
 
+**Status**: Deprecated
 **Type**: Patch
 
 **Changes**:
@@ -149,7 +169,7 @@ MAJOR.MINOR.PATCH
 ### v3.0.0 - Major release
 
 **Release Date**: 8/10/2025
-**Status**: Production Ready
+**Status**: Deprecated
 
 #### Major Features
 
@@ -389,8 +409,8 @@ MAJOR.MINOR.PATCH
 
 ### Current Version
 
-- **Backend**: v3.2.3
-- **Frontend**: v3.2.3
+- **Backend**: v3.2.4
+- **Frontend**: v3.2.4
 - **Status**: Production Ready
 
 ### Next Release
