@@ -13,12 +13,12 @@ router.post(
   validateRegistration,
   async (req: Request, res: Response) => {
     try {
-      const { email, username, password } = req.body;
+      const { username, email, password } = req.body;
 
       // Check if user already exists
       const existingUser = await prisma.user.findFirst({
         where: {
-          OR: [{ email }, { username }],
+          OR: [{ username }, { email }],
         },
       });
 
@@ -36,8 +36,8 @@ router.post(
       // Create user
       const user = await prisma.user.create({
         data: {
-          email,
           username,
+          email,
           password: hashedPassword,
           avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
         },
@@ -83,11 +83,11 @@ router.post(
 // Login user
 router.post("/login", validateLogin, async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
 
     // Find user
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { username },
     });
 
     if (!user) {

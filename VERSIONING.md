@@ -1,6 +1,6 @@
 # 📋 Steel - Version Management Guide
 
-## Current Version: v3.2.2
+## Current Version: v3.2.3
 
 Steel Chat follows [Semantic Versioning](https://semver.org/) (SemVer) for version management.
 
@@ -16,7 +16,21 @@ MAJOR.MINOR.PATCH
 
 ## Version History
 
-### v3.2.2 (Current) - Patch Release
+### v3.2.3 (Current) - Patch Release
+
+**Release Date**: 12/08/2025
+**Status**: Production Ready
+**Type**: Patch
+
+**Changes**:
+
+- Version bump to v3.2.3 in all project files and UI components
+- Fixed the parameter order in the frontend registration call to match the API service signature.
+- Fixed parameter order mismatch in frontend registration call
+- Synced all UI and API version references to 3.2.3
+- Minor bug fixes and deployment improvements
+
+### v3.2.2 (Previous) - Patch Release
 
 **Release Date**: 11/08/2025
 **Status**: Production Ready
@@ -375,8 +389,8 @@ MAJOR.MINOR.PATCH
 
 ### Current Version
 
-- **Backend**: v3.2.2
-- **Frontend**: v3.2.2
+- **Backend**: v3.2.3
+- **Frontend**: v3.2.3
 - **Status**: Production Ready
 
 ### Next Release
