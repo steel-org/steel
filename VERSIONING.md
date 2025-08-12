@@ -1,6 +1,6 @@
 # 📋 Steel - Version Management Guide
 
-## Current Version: v3.2.4
+## Current Version: v3.2.5
 
 Steel Chat follows [Semantic Versioning](https://semver.org/) (SemVer) for version management.
 
@@ -16,10 +16,23 @@ MAJOR.MINOR.PATCH
 
 ## Version History
 
-### v3.2.4 (Current) - Patch Release
+### v3.2.5 (Current) - Patch Release
 
 **Release Date**: 12/08/2025
 **Status**: Production Ready
+**Type**: Patch
+
+**Changes**:
+
+- Fixed WebSocket authentication error handling and logging
+- Enhanced user online/offline notifications and message handling in WebSocket service
+- Version bump to v3.2.5 in all project files and UI components
+- Minor performance improvements and bug fixes
+
+### v3.2.4 (Previous) - Patch Release
+
+**Release Date**: 12/08/2025
+**Status**: Deprecated
 **Type**: Patch
 
 **Changes**:
@@ -409,8 +422,8 @@ MAJOR.MINOR.PATCH
 
 ### Current Version
 
-- **Backend**: v3.2.4
-- **Frontend**: v3.2.4
+- **Backend**: v3.2.5
+- **Frontend**: v3.2.5
 - **Status**: Production Ready
 
 ### Next Release

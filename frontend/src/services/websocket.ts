@@ -9,6 +9,7 @@ class WebSocketService {
   private socket: Socket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
+  private eventCallbacks: { [key: string]: Function[] } = {};
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -72,32 +73,47 @@ class WebSocketService {
 
     // Message events
     this.socket.on('message_received', (data: MessageEvent) => {
-      useChatStore.getState().handleMessageReceived(data);
+      this.emit('messageReceived', data);
+      useChatStore.getState().handleMessageReceived?.(data);
+    });
+
+    this.socket.on('new_message', (data: any) => {
+      this.emit('newMessage', data);
     });
 
     this.socket.on('message_status', (data: { messageId: string; status: string }) => {
-      // Update message status in store
-      const { messageId, status } = data;
-      // Implementation depends on how you want to handle message status updates
+      this.emit('messageStatusUpdate', data);
+    });
+
+    this.socket.on('message_deleted', (data: { messageId: string }) => {
+      this.emit('messageDeleted', data);
     });
 
     // Typing events
     this.socket.on('user_typing', (data: TypingEvent) => {
-      useChatStore.getState().handleTypingEvent(data);
+      this.emit('userTyping', data);
+      useChatStore.getState().handleTypingEvent?.(data);
     });
 
     // Reaction events
     this.socket.on('message_reaction', (data: ReactionEvent) => {
-      useChatStore.getState().handleReactionEvent(data);
+      this.emit('messageReaction', data);
+      useChatStore.getState().handleReactionEvent?.(data);
     });
 
     // User status events
     this.socket.on('user_online', (data: { userId: string; username: string }) => {
-      useChatStore.getState().handleUserStatusChange(data.userId, 'online');
+      this.emit('userJoined', data);
+      useChatStore.getState().handleUserStatusChange?.(data.userId, 'online');
     });
 
     this.socket.on('user_offline', (data: { userId: string; username: string }) => {
-      useChatStore.getState().handleUserStatusChange(data.userId, 'offline');
+      this.emit('userLeft', data);
+      useChatStore.getState().handleUserStatusChange?.(data.userId, 'offline');
+    });
+
+    this.socket.on('users', (data: any[]) => {
+      this.emit('users', data);
     });
 
     // Chat events
@@ -108,7 +124,7 @@ class WebSocketService {
     // Error events
     this.socket.on('error', (data: { message: string }) => {
       console.error('WebSocket error:', data.message);
-      // You might want to show a toast notification here
+      this.emit('error', data);
     });
   }
 
@@ -177,6 +193,30 @@ class WebSocketService {
   // Get socket instance (for advanced usage)
   getSocket(): Socket | null {
     return this.socket;
+  }
+
+  // Event emitter methods for external components
+  on(event: string, callback: Function): void {
+    if (!this.eventCallbacks[event]) {
+      this.eventCallbacks[event] = [];
+    }
+    this.eventCallbacks[event].push(callback);
+  }
+
+  off(event: string, callback?: Function): void {
+    if (!this.eventCallbacks[event]) return;
+    
+    if (callback) {
+      this.eventCallbacks[event] = this.eventCallbacks[event].filter(cb => cb !== callback);
+    } else {
+      this.eventCallbacks[event] = [];
+    }
+  }
+
+  private emit(event: string, data?: any): void {
+    if (this.eventCallbacks[event]) {
+      this.eventCallbacks[event].forEach(callback => callback(data));
+    }
   }
 }
 
