@@ -46,7 +46,7 @@ export const setupWebSocket = (io: Server) => {
       const user: ConnectedUser = {
         id: socket.id,
         username: username || `User-${socket.id.slice(0, 6)}`,
-        avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${socket.id}`,
+        avatar: avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(username || `User-${socket.id.slice(0, 6)}`)}&background=3b82f6&color=ffffff&size=128&rounded=true`,
         joinedAt: new Date(),
         isOnline: true,
         lastSeen: new Date(),

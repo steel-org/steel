@@ -65,7 +65,7 @@ export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
           <div className="flex items-center space-x-3">
             <div className="relative">
               <img
-                src={currentUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.username}`}
+                src={currentUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.username)}&background=3b82f6&color=ffffff&size=128&rounded=true`}
                 alt={currentUser.username}
                 className="w-10 h-10 rounded-full"
               />
@@ -112,7 +112,7 @@ export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
                 >
                   <div className="relative">
                     <img
-                      src={user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
+                      src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=3b82f6&color=ffffff&size=128&rounded=true`}
                       alt={user.username}
                       className="w-10 h-10 rounded-full"
                     />
