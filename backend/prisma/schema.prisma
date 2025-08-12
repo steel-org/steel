@@ -11,15 +11,20 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  username  String   @unique
-  password  String
-  avatar    String?
-  status    String   @default("offline") // online, offline, away, busy
-  lastSeen  DateTime @default(now())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  email       String   @unique
+  username    String   @unique
+  password    String
+  displayName String?
+  avatar      String?
+  bio         String?  @db.Text
+  location    String?
+  website     String?
+  status      String   @default("offline") // online, offline, away, busy
+  lastSeen    DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  roles       String[] @default([]) // Array of role strings
 
   // Relations
   sentMessages     Message[]         @relation("MessageSender")
