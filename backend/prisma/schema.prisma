@@ -192,9 +192,4 @@ model DownloadLog {
   @@index([fileId])
   @@index([userId])
   @@map("download_logs")
-<<<<<<< HEAD
 }
-
-=======
-}
->>>>>>> 1fb4220a1e0c9d42a9b81e71efa108864db4a7d0
