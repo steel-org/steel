@@ -343,9 +343,9 @@ This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENS
 
 For support and questions:
 
-- Create an issue on GitHub
+- Create a new issue on GitHub
 - Check the documentation
-- Join our community chat
+- [Join our community](https://t.me/steel_org)
 
 ---
 

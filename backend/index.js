@@ -214,6 +214,6 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Steel Private Chat Backend running on port ${PORT}`);
   console.log(`📡 Socket.io server ready for connections`);
-  console.log(`🌐 Health check: http://0.0.0.0:${PORT}/health`);
+  console.log(`🌐 Health check: http://localhost:${PORT}/health`);
   console.log(`This is Version 3.3.0`);
 });
