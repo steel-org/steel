@@ -20,11 +20,11 @@ model User {
   bio         String?  @db.Text
   location    String?
   website     String?
-  status      String   @default("offline") // online, offline, away, busy
+  status      String   @default("offline")
   lastSeen    DateTime @default(now())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  roles       String[] @default([]) // Array of role strings
+  roles       String[] @default([])
 
   // Relations
   sentMessages     Message[]         @relation("MessageSender")
@@ -32,6 +32,7 @@ model User {
   messageReactions MessageReaction[]
   messageEdits     MessageEdit[]
   ownedGroups      Chat[]            @relation("GroupOwner")
+  downloadLogs     DownloadLog[]
 
   @@map("users")
 }
@@ -100,18 +101,22 @@ model Message {
 }
 
 model Attachment {
-  id           String   @id @default(cuid())
-  filename     String
-  originalName String
-  mimeType     String
-  size         Int
-  url          String
-  thumbnail    String?
-  createdAt    DateTime @default(now())
+  id             String   @id @default(cuid())
+  filename       String
+  originalName   String
+  mimeType       String
+  size           Int
+  url            String
+  thumbnail      String?
+  storageProvider String?  @default("s3")  
+  storageBucket  String?   
+  storageKey     String?   
+  createdAt      DateTime  @default(now())
 
   // Relations
-  message   Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  messageId String?
+  message      Message?     @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId    String?
+  downloadLogs DownloadLog[]
 
   @@map("attachments")
 }
@@ -170,4 +175,21 @@ enum MessageStatus {
   SENT
   DELIVERED
   READ
+}
+
+model DownloadLog {
+  id        String   @id @default(cuid())
+  fileId    String
+  userId    String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  file Attachment @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  user User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([fileId])
+  @@index([userId])
+  @@map("download_logs")
 }

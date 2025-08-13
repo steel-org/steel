@@ -92,3 +92,6 @@ jspm_packages/
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test 
 frontend/vercel.json
+
+# Next.js TypeScript type definitions
+next-env.d.ts

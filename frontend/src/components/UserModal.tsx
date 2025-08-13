@@ -29,7 +29,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const formatJoinDate = (date: Date) => {
+  const formatJoinDate = (date: string | Date) => {
     return new Intl.DateTimeFormat("en-US", {
       year: "numeric",
       month: "long",
@@ -195,7 +195,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <User className="w-8 h-8 text-gray-600" />
+                    <UserIcon className="w-8 h-8 text-gray-600" />
                   )}
                 </div>
                 <button
@@ -262,7 +262,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
               <span className="text-sm text-gray-600 capitalize">
                 <select
                   value={status}
-                  onChange={(e) => setStatus(e.target.value)}
+                  onChange={(e) => setStatus(e.target.value as "online" | "offline" | "away" | "busy")}
                   className="bg-transparent capitalize outline-none cursor-pointer"
                 >
                   <option value="online">Online</option>

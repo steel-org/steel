@@ -41,12 +41,18 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // CORS configuration
-app.use(
-  cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: (origin, callback) => {
+    console.log('Request origin:', origin);
+    const allowedOrigins = ['http://localhost:3000', 'https://steel-z6c6.vercel.app'];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 
 // Body parsing middleware
 app.use(express.json({ limit: "10mb" }));
@@ -66,7 +72,7 @@ app.get("/api/health", (req, res) => {
   res.json({
     success: true,
     message: "Server is running",
-    version: "3.2.2",
+    version: "3.3.0",
     timestamp: new Date().toISOString(),
   });
 });
@@ -77,7 +83,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 server.listen(Number(PORT), "0.0.0.0", () => {
-  logger.info(`🚀 Steel Backend v3.2.2 running on port ${PORT}`);
+  logger.info(`🚀 Steel Backend v3.3.0 running on port ${PORT}`);
   logger.info(`📡 Socket.io server ready for connections`);
   logger.info(`🌐 Health check: http://0.0.0.0:${PORT}/api/health`);
   logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);

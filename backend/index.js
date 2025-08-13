@@ -35,7 +35,7 @@ io.on("connection", (socket) => {
       username: username || `User-${socket.id.slice(0, 6)}`,
       avatar:
         avatar ||
-        `https://api.dicebear.com/7.x/avataaars/svg?seed=${socket.id}`,
+        `https://ui-avatars.com/api/?name=${socket.id}&size=128&background=000000&color=ffffff`,
       joinedAt: new Date(),
       isOnline: true,
       lastSeen: new Date(),
@@ -203,7 +203,7 @@ app.get("/health", (req, res) => {
 app.get("/info", (req, res) => {
   res.json({
     name: "Steel Private Chat Backend",
-    version: "3.1.0",
+    version: "3.3.0",
     connectedUsers: connectedUsers.size,
     uptime: process.uptime(),
   });
@@ -215,5 +215,5 @@ server.listen(PORT, () => {
   console.log(`🚀 Steel Private Chat Backend running on port ${PORT}`);
   console.log(`📡 Socket.io server ready for connections`);
   console.log(`🌐 Health check: http://0.0.0.0:${PORT}/health`);
-  console.log(`This is Version 3.1.0`);
+  console.log(`This is Version 3.3.0`);
 });
