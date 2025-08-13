@@ -193,3 +193,4 @@ model DownloadLog {
   @@index([userId])
   @@map("download_logs")
 }
+
