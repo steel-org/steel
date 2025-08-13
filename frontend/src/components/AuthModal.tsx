@@ -35,9 +35,11 @@ export default function AuthModal({
     try {
       let user: User;
       if (isLogin) {
-        user = await apiService.login(username, password);
+        const response = await apiService.login(username, password);
+        user = response.user;
       } else {
-        user = await apiService.register(username, email, password);
+        const response = await apiService.register(username, email, password);
+        user = response.user;
       }
       onSuccess(user);
     } catch (error: any) {
@@ -169,7 +171,7 @@ export default function AuthModal({
 
         <div className="mt-6 pt-6 border-t border-gray-700">
           <div className="text-xs text-gray-400 text-center">
-            <p>Steel v3.2.4 • Real-time developer collaboration</p>
+            <p>Steel v3.3.0 • Real-time developer collaboration</p>
             <p className="mt-1">
               Share code, ideas, and collaborate seamlessly
             </p>

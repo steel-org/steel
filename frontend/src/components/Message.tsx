@@ -7,18 +7,19 @@ import { Message as MessageType, User } from '../types';
 interface MessageProps {
   message: MessageType;
   currentUser: User;
-  onEdit?: (messageId: string, newContent: string) => void;
-  onDelete?: (messageId: string) => void;
-  onReply?: (message: MessageType) => void;
+  otherUser: User;
+  onEditMessage?: (messageId: string, newContent: string) => void;
+  onDeleteMessage: (messageId: string) => void;
+  onReplyToMessage: (message: MessageType) => void;
   onReact?: (messageId: string, reaction: string) => void;
 }
 
 const MessageComponent: React.FC<MessageProps> = ({
   message,
   currentUser,
-  onEdit,
-  onDelete,
-  onReply,
+  onEditMessage,
+  onDeleteMessage,
+  onReplyToMessage,
   onReact
 }) => {
   const [showActions, setShowActions] = useState(false);
@@ -26,11 +27,11 @@ const MessageComponent: React.FC<MessageProps> = ({
   const [editContent, setEditContent] = useState(message.content);
 
   const isOwn = message.sender.id === currentUser.id;
-  const isCode = message.type === 'code';
+  const isCode = message.type === 'CODE';
 
   const handleEdit = () => {
-    if (onEdit && editContent.trim() !== message.content) {
-      onEdit(message.id, editContent.trim());
+    if (onEditMessage && editContent.trim() !== message.content) {
+      onEditMessage(message.id, editContent.trim());
     }
     setIsEditing(false);
   };
@@ -47,8 +48,8 @@ const MessageComponent: React.FC<MessageProps> = ({
     }
   };
 
-  const formatTime = (date: Date) => {
-    return formatDistanceToNow(new Date(date), { addSuffix: true });
+  const formatTime = (dateString: string) => {
+    return formatDistanceToNow(new Date(dateString), { addSuffix: true });
   };
 
   return (
@@ -141,7 +142,7 @@ const MessageComponent: React.FC<MessageProps> = ({
                         rel="noopener noreferrer"
                         className="text-blue-200 hover:text-white underline"
                       >
-                        {attachment.name}
+                        {attachment.filename}
                       </a>
                       <Download size={16} />
                     </div>
@@ -162,15 +163,13 @@ const MessageComponent: React.FC<MessageProps> = ({
 
           {showActions && !isEditing && (
             <div className="flex items-center space-x-1">
-              {onReply && (
-                <button
-                  onClick={() => onReply(message)}
-                  className="p-1 text-gray-400 hover:text-gray-600 rounded"
-                  title="Reply"
-                >
-                  <Reply size={14} />
-                </button>
-              )}
+              <button
+                onClick={() => onReplyToMessage(message)}
+                className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                title="Reply"
+              >
+                <Reply size={14} />
+              </button>
               
               {isCode && (
                 <button
@@ -182,7 +181,7 @@ const MessageComponent: React.FC<MessageProps> = ({
                 </button>
               )}
 
-              {isOwn && onEdit && (
+              {isOwn && onEditMessage && (
                 <button
                   onClick={() => setIsEditing(true)}
                   className="p-1 text-gray-400 hover:text-gray-600 rounded"
@@ -192,9 +191,9 @@ const MessageComponent: React.FC<MessageProps> = ({
                 </button>
               )}
 
-              {isOwn && onDelete && (
+              {isOwn && (
                 <button
-                  onClick={() => onDelete(message.id)}
+                  onClick={() => onDeleteMessage(message.id)}
                   className="p-1 text-gray-400 hover:text-red-600 rounded"
                   title="Delete"
                 >
@@ -209,11 +208,11 @@ const MessageComponent: React.FC<MessageProps> = ({
           <div className="flex flex-wrap gap-1 mt-2">
             {message.reactions.map((reaction) => (
               <button
-                key={`${reaction.emoji}-${reaction.user.id}`}
-                onClick={() => handleReaction(reaction.emoji)}
+                key={`${reaction.id}-${reaction.user.id}`}
+                onClick={() => handleReaction(reaction.reaction)}
                 className="px-2 py-1 text-xs bg-gray-200 rounded-full hover:bg-gray-300 transition-colors"
               >
-                {reaction.emoji} {reaction.count > 1 && reaction.count}
+                {reaction.reaction}
               </button>
             ))}
           </div>

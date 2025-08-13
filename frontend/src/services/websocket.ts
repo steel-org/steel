@@ -185,6 +185,16 @@ class WebSocketService {
     this.socket.emit('react_to_message', { messageId, reaction });
   }
 
+  // Delete message
+  deleteMessage(chatId: string, messageId: string): void {
+    if (!this.socket) {
+      console.error('WebSocket not connected');
+      return;
+    }
+
+    this.socket.emit('delete_message', { chatId, messageId });
+  }
+
   // Get connection status
   isConnected(): boolean {
     return this.socket?.connected || false;

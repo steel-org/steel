@@ -5,6 +5,7 @@ import { Send, Paperclip, Code, Smile } from 'lucide-react';
 interface MessageInputProps {
   onSendMessage: (content: string, type?: 'text' | 'code') => void;
   onFileUpload: (file: File) => void;
+  onTyping?: (isTyping: boolean) => void;
   disabled?: boolean;
   placeholder?: string;
 }
@@ -12,6 +13,7 @@ interface MessageInputProps {
 const MessageInput: React.FC<MessageInputProps> = ({
   onSendMessage,
   onFileUpload,
+  onTyping,
   disabled = false,
   placeholder = "Type a message..."
 }) => {
@@ -20,12 +22,36 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [isTyping, setIsTyping] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Track typing state with debounce
+  const typingTimeout = useRef<NodeJS.Timeout>();
+  
+  const handleTyping = (typing: boolean) => {
+    if (onTyping) {
+      onTyping(typing);
+    }
+    
+    // Clear any existing timeout
+    if (typingTimeout.current) {
+      clearTimeout(typingTimeout.current);
+    }
+    
+    // Set a new timeout to stop typing after 2 seconds of inactivity
+    if (typing) {
+      typingTimeout.current = setTimeout(() => {
+        if (onTyping) {
+          onTyping(false);
+        }
+      }, 2000);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (message.trim() && !disabled) {
       onSendMessage(message.trim(), isCodeMode ? 'code' : 'text');
       setMessage('');
       setIsCodeMode(false);
+      handleTyping(false); // Reset typing state after sending
     }
   };
 
@@ -54,7 +80,14 @@ const MessageInput: React.FC<MessageInputProps> = ({
           {isCodeMode ? (
             <textarea
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={(e) => {
+                setMessage(e.target.value);
+                if (e.target.value.trim()) {
+                  handleTyping(true);
+                } else {
+                  handleTyping(false);
+                }
+              }}
               onKeyDown={handleKeyPress}
               placeholder="Enter code..."
               className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
@@ -64,7 +97,14 @@ const MessageInput: React.FC<MessageInputProps> = ({
           ) : (
             <textarea
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={(e) => {
+                setMessage(e.target.value);
+                if (e.target.value.trim()) {
+                  handleTyping(true);
+                } else {
+                  handleTyping(false);
+                }
+              }}
               onKeyDown={handleKeyPress}
               placeholder={placeholder}
               className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"

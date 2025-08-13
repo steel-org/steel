@@ -9,6 +9,10 @@ export interface User {
   createdAt: string;
   bio?: string;
   location?: string;
+  website?: string;
+  roles?: string[];
+  messageCount?: number;
+  chatCount?: number;
 }
 
 export interface Chat {
@@ -20,8 +24,10 @@ export interface Chat {
   updatedAt: string;
   lastMessage?: string;
   members: ChatMember[];
+  participants: string[]; 
   owner?: User;
   unreadCount?: number;
+  isGroup?: boolean; 
 }
 
 export interface ChatMember {
@@ -33,6 +39,7 @@ export interface ChatMember {
 
 export interface Message {
   id: string;
+  chatId?: string;  // Added this line to fix the TypeScript error
   content: string;
   type: 'TEXT' | 'CODE' | 'FILE' | 'SYSTEM';
   status: 'SENT' | 'DELIVERED' | 'READ';
@@ -113,6 +120,7 @@ export interface TypingEvent {
   userId: string;
   username: string;
   isTyping: boolean;
+  chatId: string;
 }
 
 export interface MessageEvent {
@@ -124,6 +132,7 @@ export interface ReactionEvent {
   reaction: string;
   userId: string;
   username: string;
+  chatId: string;
 }
 
 export interface UserStatusEvent {
@@ -152,4 +161,14 @@ export interface SearchResult {
   title: string;
   content?: string;
   metadata?: any;
+}
+
+export interface Notification {
+  id: string;
+  title: string;
+  body: string;
+  icon?: string;
+  timestamp?: number;
+  chatId?: string;
+  read?: boolean;
 } 

@@ -1,21 +1,22 @@
-
-import React, { useEffect, useState } from 'react';
-import { useChatStore } from '@/stores/chatStore';
-import { apiService } from '@/services/api';
-import { wsService } from '@/services/websocket';
-import Sidebar from './Sidebar';
-import ChatArea from './ChatArea';
-import AuthModal from './AuthModal';
-import { User, Message, Chat } from '@/types';
+import React, { useEffect, useState } from "react";
+import { useChatStore } from "@/stores/chatStore";
+import { apiService } from "@/services/api";
+import { wsService } from "@/services/websocket";
+import Sidebar from "./Sidebar";
+import ChatArea from "./ChatArea";
+import AuthModal from "./AuthModal";
+import { User, Message, Chat } from "@/types";
 
 export default function ChatLayout() {
-  const { 
-    currentUser, 
-    setCurrentUser, 
-    isLoading, 
+  const {
+    currentUser,
+    setCurrentUser,
+    isLoading,
     setIsLoading,
     selectedChat,
     setSelectedChat,
+    chats,
+    addChat,
     messages,
     addMessage,
     setMessages,
@@ -25,9 +26,9 @@ export default function ChatLayout() {
     updateUser,
     typingUsers,
     addTypingUser,
-    removeTypingUser
+    removeTypingUser,
   } = useChatStore();
-  
+
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
@@ -54,11 +55,11 @@ export default function ChatLayout() {
       setIsLoading(true);
       const user = await apiService.getCurrentUser();
       setCurrentUser(user);
-      
+
       // Connect to WebSocket
       await connectWebSocket();
     } catch (error) {
-      console.error('Failed to load current user:', error);
+      console.error("Failed to load current user:", error);
       apiService.clearToken();
       setShowAuthModal(true);
     } finally {
@@ -70,84 +71,121 @@ export default function ChatLayout() {
     try {
       setIsConnecting(true);
       await wsService.connect();
-      console.log('WebSocket connected successfully');
+      console.log("WebSocket connected successfully");
     } catch (error) {
-      console.error('Failed to connect to WebSocket:', error);
+      console.error("Failed to connect to WebSocket:", error);
     } finally {
       setIsConnecting(false);
     }
   };
 
   const setupWebSocketListeners = () => {
-    wsService.on('users', (usersList: User[]) => {
+    wsService.on("users", (usersList: User[]) => {
       setUsers(usersList);
     });
 
-    wsService.on('messageReceived', (message: Message) => {
+    wsService.on("messageReceived", (message: Message) => {
       if (selectedChat) {
         addMessage(selectedChat.id, message);
-        saveMessagesToStorage(selectedChat.id, [...messages[selectedChat.id] || [], message]);
+        saveMessagesToStorage(selectedChat.id, [
+          ...(messages[selectedChat.id] || []),
+          message,
+        ]);
       }
     });
 
-    wsService.on('newMessage', (message: Message) => {
+    wsService.on("newMessage", (message: Message) => {
       if (selectedChat) {
         addMessage(selectedChat.id, message);
-        saveMessagesToStorage(selectedChat.id, [...messages[selectedChat.id] || [], message]);
-        
+        saveMessagesToStorage(selectedChat.id, [
+          ...(messages[selectedChat.id] || []),
+          message,
+        ]);
+
         // Mark as read if conversation is active
         if (
           selectedChat &&
-          ((message.senderId === selectedChat.participantIds.find(id => id !== currentUser?.id) &&
-            message.recipientId === currentUser?.id) ||
-            (message.recipientId === selectedChat.participantIds.find(id => id !== currentUser?.id) &&
-              message.senderId === currentUser?.id))
+          ((message.sender.id ===
+            selectedChat.members.find(
+              (member) => member.user.id !== currentUser?.id
+            )?.user.id &&
+            selectedChat.members.some(
+              (member) => member.user.id === currentUser?.id
+            )) ||
+            (selectedChat.members.some(
+              (member) => member.user.id === message.sender.id
+            ) &&
+              message.sender.id === currentUser?.id))
         ) {
-          wsService.emit('markAsRead', {
-            senderId: message.senderId,
-            messageId: message.id,
-          });
+          const socket = wsService.getSocket();
+          if (socket) {
+            socket.emit("mark_as_read", {
+              messageId: message.id,
+              chatId: selectedChat.id,
+            });
+          }
         }
       }
     });
 
-    wsService.on('messageStatusUpdate', ({ messageId, status }: { messageId: string, status: string }) => {
-      if (selectedChat) {
-        // Update message status in store
-        const chatMessages = messages[selectedChat.id] || [];
-        const updatedMessages = chatMessages.map(msg => 
-          msg.id === messageId ? { ...msg, status } : msg
-        );
-        setMessages(selectedChat.id, updatedMessages);
-      }
-    });
+    wsService.on(
+      "messageStatusUpdate",
+      ({ messageId, status }: { messageId: string; status: string }) => {
+        if (selectedChat) {
+          const validStatuses = ["SENT", "DELIVERED", "READ"] as const;
+          const isValidStatus = validStatuses.includes(status as any);
+          const newStatus = isValidStatus
+            ? (status as "SENT" | "DELIVERED" | "READ")
+            : "SENT";
 
-    wsService.on('messageDeleted', ({ messageId }: { messageId: string }) => {
+          const chatMessages = messages[selectedChat.id] || [];
+          const updatedMessages = chatMessages.map((msg) =>
+            msg.id === messageId ? { ...msg, status: newStatus } : msg
+          );
+          setMessages(selectedChat.id, updatedMessages);
+        }
+      }
+    );
+
+    wsService.on("messageDeleted", ({ messageId }: { messageId: string }) => {
       if (selectedChat) {
         const chatMessages = messages[selectedChat.id] || [];
-        const updatedMessages = chatMessages.filter(msg => msg.id !== messageId);
+        const updatedMessages = chatMessages.filter(
+          (msg) => msg.id !== messageId
+        );
         setMessages(selectedChat.id, updatedMessages);
         saveMessagesToStorage(selectedChat.id, updatedMessages);
       }
     });
 
-    wsService.on('userJoined', (user: User) => {
+    wsService.on("userJoined", (user: User) => {
       addUser(user);
     });
 
-    wsService.on('userLeft', (user: User) => {
-      updateUser(user.id, { isOnline: false, lastSeen: user.lastSeen });
+    wsService.on("userLeft", (user: User) => {
+      updateUser(user.id, { status: "offline", lastSeen: user.lastSeen });
     });
 
-    wsService.on('userTyping', ({ userId, username, isTyping }: { userId: string, username: string, isTyping: boolean }) => {
-      if (selectedChat) {
-        if (isTyping) {
-          addTypingUser(selectedChat.id, username);
-        } else {
-          removeTypingUser(selectedChat.id, username);
+    wsService.on(
+      "userTyping",
+      ({
+        userId,
+        username,
+        isTyping,
+      }: {
+        userId: string;
+        username: string;
+        isTyping: boolean;
+      }) => {
+        if (selectedChat) {
+          if (isTyping) {
+            addTypingUser(selectedChat.id, username);
+          } else {
+            removeTypingUser(selectedChat.id, username);
+          }
         }
       }
-    });
+    );
   };
 
   const loadMessagesFromStorage = (chatId: string): Message[] => {
@@ -155,23 +193,26 @@ export default function ChatLayout() {
       const stored = localStorage.getItem(`steel_messages_${chatId}`);
       return stored ? JSON.parse(stored) : [];
     } catch (error) {
-      console.error('Error loading messages from localStorage:', error);
+      console.error("Error loading messages from localStorage:", error);
       return [];
     }
   };
 
   const saveMessagesToStorage = (chatId: string, messages: Message[]) => {
     try {
-      localStorage.setItem(`steel_messages_${chatId}`, JSON.stringify(messages));
+      localStorage.setItem(
+        `steel_messages_${chatId}`,
+        JSON.stringify(messages)
+      );
     } catch (error) {
-      console.error('Error saving messages to localStorage:', error);
+      console.error("Error saving messages to localStorage:", error);
     }
   };
 
   const handleAuthSuccess = async (user: User) => {
     setCurrentUser(user);
     setShowAuthModal(false);
-    
+
     // Connect to WebSocket after successful authentication
     await connectWebSocket();
   };
@@ -184,25 +225,72 @@ export default function ChatLayout() {
       setSelectedChat(null);
       setShowAuthModal(true);
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error("Logout failed:", error);
     }
   };
 
-  const handleStartConversation = (userId: string) => {
-    const user = users.find((u) => u.id === userId);
-    if (!user) return;
+  const handleStartConversation = async (userId: string) => {
+    if (!currentUser) return;
 
-    // Create or find existing chat
-    const chatId = [currentUser!.id, userId].sort().join('_');
+    // Sort user IDs to ensure consistent chat ID generation
+    const [user1, user2] = [currentUser.id, userId].sort();
+    const chatId = `chat_${user1}_${user2}`;
+
+    // Check if chat already exists with this user
+    const existingChat = chats.find(chat =>
+      !chat.isGroup &&
+      chat.participants?.includes(userId) &&
+      chat.participants?.includes(currentUser.id)
+    );
+
+    if (existingChat) {
+      setSelectedChat(existingChat);
+      return;
+    }
+
+    // Find user 
+    const existingUser = users.find(u => u.id === userId);
+    const user: User = existingUser || {
+      id: userId,
+      username: `user_${userId.slice(0, 6)}`,
+      displayName: `User ${userId.slice(0, 6)}`,
+      lastSeen: new Date().toISOString(),
+      email: `${userId}@placeholder.com`,
+      avatar: `https://ui-avatars.com/api/?name=User+${encodeURIComponent(userId.slice(0, 6))}&background=random`,
+      createdAt: new Date().toISOString(),
+      status: 'offline' 
+    };
+    
     const chat: Chat = {
       id: chatId,
-      participantIds: [currentUser!.id, userId],
-      participants: [currentUser!, user],
-      lastMessage: null,
+      type: 'DIRECT',
+      members: [
+        {
+          id: `${chatId}_${currentUser.id}`,
+          role: 'MEMBER',
+          joinedAt: new Date().toISOString(),
+          user: currentUser
+        },
+        {
+          id: `${chatId}_${userId}`,
+          role: 'MEMBER',
+          joinedAt: new Date().toISOString(),
+          user: user
+        }
+      ],
+      participants: [currentUser.id, userId],
+      lastMessage: undefined,
       unreadCount: 0,
+      isGroup: false,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
+    
+    // Add to chats list if not exists
+    const chatExists = chats.some(c => c.id === chatId);
+    if (!chatExists) {
+      addChat(chat);
+    }
 
     setSelectedChat(chat);
     setReplyingTo(null);
@@ -212,46 +300,48 @@ export default function ChatLayout() {
     setMessages(chatId, existingMessages);
   };
 
-  const sendMessage = (text: string, type = 'text') => {
+  const sendMessage = (text: string, type = "text") => {
     if (text.trim() && selectedChat && currentUser) {
-      const otherUserId = selectedChat.participantIds.find(id => id !== currentUser.id);
-      wsService.emit('privateMessage', {
-        recipientId: otherUserId,
-        text,
+      const messageData = {
+        chatId: selectedChat.id,
+        content: text,
         type,
-        replyTo: replyingTo,
-      });
+        ...(replyingTo && {
+          replyToId: replyingTo.id,
+        }),
+      };
+      
+      wsService.sendMessage(messageData);
       setReplyingTo(null);
     }
   };
 
   const sendCodeSnippet = (code: string, language: string) => {
     if (code.trim() && selectedChat && currentUser) {
-      const otherUserId = selectedChat.participantIds.find(id => id !== currentUser.id);
-      wsService.emit('codeSnippet', {
-        recipientId: otherUserId,
-        code,
+      const messageData = {
+        chatId: selectedChat.id,
+        content: code,
+        type: 'code',
         language,
-        replyTo: replyingTo,
-      });
+        ...(replyingTo && {
+          replyToId: replyingTo.id,
+        }),
+      };
+      
+      wsService.sendMessage(messageData);
       setReplyingTo(null);
     }
   };
 
   const handleTyping = (isTyping: boolean) => {
     if (selectedChat && currentUser) {
-      const otherUserId = selectedChat.participantIds.find(id => id !== currentUser.id);
-      wsService.emit('typing', { recipientId: otherUserId, isTyping });
+      wsService.setTyping(selectedChat.id, isTyping);
     }
   };
 
   const deleteMessage = (messageId: string) => {
     if (selectedChat && currentUser) {
-      const otherUserId = selectedChat.participantIds.find(id => id !== currentUser.id);
-      wsService.emit('deleteMessage', {
-        messageId,
-        recipientId: otherUserId,
-      });
+      wsService.deleteMessage(selectedChat.id, messageId);
     }
   };
 
@@ -286,11 +376,8 @@ export default function ChatLayout() {
 
   return (
     <div className="flex h-screen bg-gray-900">
-      <Sidebar 
-        onLogout={handleLogout}
-        onUserSelect={handleStartConversation}
-      />
-      <ChatArea 
+      <Sidebar onLogout={handleLogout} onUserSelect={handleStartConversation} />
+      <ChatArea
         replyingTo={replyingTo}
         onSendMessage={sendMessage}
         onSendCodeSnippet={sendCodeSnippet}
@@ -299,10 +386,10 @@ export default function ChatLayout() {
         onReplyToMessage={replyToMessage}
         onCancelReply={cancelReply}
       />
-      
+
       {isConnecting && (
         <div className="fixed top-4 right-4 bg-yellow-600 text-white px-4 py-2 rounded-md shadow-lg">
-          Connecting to server...
+          Connecting to steel...
         </div>
       )}
     </div>

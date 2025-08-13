@@ -8,7 +8,7 @@ import CodeInput from "./CodeInput";
 
 interface ChatAreaProps {
   replyingTo: Message | null;
-  onSendMessage: (text: string, type?: string) => void;
+  onSendMessage: (text: string, type?: string, attachment?: any) => void;
   onSendCodeSnippet: (code: string, language: string) => void;
   onTyping: (isTyping: boolean) => void;
   onDeleteMessage: (messageId: string) => void;
@@ -30,9 +30,9 @@ export default function ChatArea({
   const [showCodeInput, setShowCodeInput] = useState(false);
 
   const chatMessages = selectedChat ? messages[selectedChat.id] || [] : [];
-  const otherUser = selectedChat?.participants.find(
-    (p) => p.id !== currentUser?.id
-  );
+  const otherUser = selectedChat?.members.find(
+    (member) => member.user.id !== currentUser?.id
+  )?.user;
   const chatTypingUsers = selectedChat
     ? Array.from(typingUsers[selectedChat.id] || new Set())
     : [];
@@ -45,9 +45,72 @@ export default function ChatArea({
     scrollToBottom();
   }, [chatMessages]);
 
-  const handleSendMessage = (text: string) => {
-    if (text.trim()) {
-      onSendMessage(text);
+  const handleFileUpload = async (file: File) => {
+    try {
+      // Check file size (100MB limit)
+      const MAX_FILE_SIZE = 100 * 1024 * 1024;
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error('File size exceeds the 100MB limit');
+      }
+
+      // Check file type
+      const allowedTypes = [
+        'image/jpeg',
+        'image/png',
+        'image/gif',
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/plain',
+        'application/zip',
+        'application/x-rar-compressed'
+      ];
+      
+      if (!allowedTypes.includes(file.type) && !file.name.match(/\.(jpe?g|png|gif|pdf|docx?|xlsx?|txt|zip|rar)$/i)) {
+        throw new Error('File type not allowed');
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      if (selectedChat?.id) {
+        formData.append('chatId', selectedChat.id);
+      }
+      
+      // Use the API service to upload the file
+      const response = await fetch('/api/files/upload', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to upload file');
+      }
+
+      const { data: attachment } = await response.json();
+      
+      // Send a message with the file attachment
+      onSendMessage(attachment.originalName, 'file', attachment);
+      
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert(error instanceof Error ? error.message : 'Failed to upload file');
+    }
+  };
+  
+  const handleTyping = (isTyping: boolean) => {
+    onTyping(isTyping);
+  };
+
+  const handleSendMessage = (text: string, type: string = 'text', attachment?: any) => {
+    if (text.trim() || type === 'file') {
+      onSendMessage(text, type, attachment);
     }
   };
 
@@ -82,6 +145,7 @@ export default function ChatArea({
           </h3>
           <p className="text-gray-400">
             Choose someone from the sidebar to begin a conversation
+            Or search for your preferred user
           </p>
         </div>
       </div>
@@ -106,8 +170,8 @@ export default function ChatArea({
               {otherUser.username}
             </h2>
             <p className="text-sm text-gray-400">
-              {otherUser.isOnline
-                ? "Online"
+              {otherUser.status === 'online' 
+                ? 'Online' 
                 : `Last seen ${otherUser.lastSeen}`}
             </p>
           </div>
@@ -122,7 +186,7 @@ export default function ChatArea({
               <Reply className="w-4 h-4 text-blue-400" />
               <span className="text-sm text-gray-300">
                 Replying to{" "}
-                {replyingTo.senderId === currentUser?.id
+                {replyingTo.sender.id === currentUser?.id
                   ? "yourself"
                   : otherUser.username}
               </span>
@@ -135,7 +199,7 @@ export default function ChatArea({
             </button>
           </div>
           <div className="mt-2 pl-6 border-l-2 border-blue-400">
-            <p className="text-sm text-gray-400 truncate">{replyingTo.text}</p>
+            <p className="text-sm text-gray-400 truncate">{replyingTo.content}</p>
           </div>
         </div>
       )}
@@ -195,22 +259,23 @@ export default function ChatArea({
       <div className="bg-gray-800 border-t border-gray-700 p-4">
         {showCodeInput ? (
           <CodeInput
-            onSend={handleSendCode}
-            onCancel={() => setShowCodeInput(false)}
+            onSendCode={handleSendCode}
+            onClose={() => setShowCodeInput(false)}
           />
         ) : (
           <div className="flex items-center space-x-2">
             <MessageInput
-              onSend={handleSendMessage}
-              onTyping={onTyping}
+              onSendMessage={handleSendMessage}
+              onFileUpload={handleFileUpload}
+              onTyping={handleTyping}
               placeholder={
                 replyingTo
                   ? `Reply to ${
-                      replyingTo.senderId === currentUser?.id
+                      replyingTo.sender.id === currentUser?.id
                         ? "your message"
-                        : otherUser.username
+                        : otherUser?.username || 'the user'
                     }...`
-                  : `Message ${otherUser.username}...`
+                  : `Message ${otherUser?.username || '...'}`
               }
             />
 

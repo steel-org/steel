@@ -1,24 +1,55 @@
-
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useCallback, ChangeEvent } from 'react';
 import { Editor } from '@monaco-editor/react';
-import { Copy, Send, X } from 'lucide-react';
+import { Copy, Send, X, Upload, FileText, Save } from 'lucide-react';
 
 interface CodeInputProps {
-  onSendCode: (code: string, language: string) => void;
+  onSendCode: (code: string, language: string, filename?: string) => void;
   onClose: () => void;
   initialCode?: string;
   initialLanguage?: string;
+  initialFilename?: string;
 }
+
+const languageExtensions: { [key: string]: string } = {
+  'javascript': 'js',
+  'typescript': 'ts',
+  'python': 'py',
+  'java': 'java',
+  'cpp': 'cpp',
+  'c': 'c',
+  'csharp': 'cs',
+  'go': 'go',
+  'rust': 'rs',
+  'ruby': 'rb',
+  'php': 'php',
+  'swift': 'swift',
+  'kotlin': 'kt',
+  'html': 'html',
+  'css': 'css',
+  'scss': 'scss',
+  'json': 'json',
+  'markdown': 'md',
+  'yaml': 'yaml',
+  'xml': 'xml',
+  'sql': 'sql',
+  'bash': 'sh',
+  'powershell': 'ps1',
+  'dockerfile': 'Dockerfile',
+  'makefile': 'Makefile'
+};
 
 const CodeInput: React.FC<CodeInputProps> = ({
   onSendCode,
   onClose,
   initialCode = '',
-  initialLanguage = 'javascript'
+  initialLanguage = 'javascript',
+  initialFilename = ''
 }) => {
   const [code, setCode] = useState(initialCode);
   const [language, setLanguage] = useState(initialLanguage);
+  const [filename, setFilename] = useState(initialFilename);
   const [isLoading, setIsLoading] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<any>(null);
 
   const languages = [
@@ -29,163 +60,198 @@ const CodeInput: React.FC<CodeInputProps> = ({
     { value: 'cpp', label: 'C++' },
     { value: 'c', label: 'C' },
     { value: 'csharp', label: 'C#' },
-    { value: 'html', label: 'HTML' },
-    { value: 'css', label: 'CSS' },
-    { value: 'json', label: 'JSON' },
-    { value: 'sql', label: 'SQL' },
-    { value: 'bash', label: 'Bash' },
-    { value: 'yaml', label: 'YAML' },
-    { value: 'markdown', label: 'Markdown' },
-    { value: 'xml', label: 'XML' },
-    { value: 'php', label: 'PHP' },
-    { value: 'ruby', label: 'Ruby' },
     { value: 'go', label: 'Go' },
     { value: 'rust', label: 'Rust' },
-    { value: 'swift', label: 'Swift' }
+    { value: 'ruby', label: 'Ruby' },
+    { value: 'php', label: 'PHP' },
+    { value: 'swift', label: 'Swift' },
+    { value: 'kotlin', label: 'Kotlin' },
+    { value: 'html', label: 'HTML' },
+    { value: 'css', label: 'CSS' },
+    { value: 'scss', label: 'SCSS' },
+    { value: 'json', label: 'JSON' },
+    { value: 'markdown', label: 'Markdown' },
+    { value: 'yaml', label: 'YAML' },
+    { value: 'xml', label: 'XML' },
+    { value: 'sql', label: 'SQL' },
+    { value: 'bash', label: 'Bash' },
+    { value: 'powershell', label: 'PowerShell' },
+    { value: 'dockerfile', label: 'Dockerfile' },
+    { value: 'makefile', label: 'Makefile' },
   ];
+
+  const handleFileUpload = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Detect language from file extension
+    const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+    const detectedLanguage = Object.entries(languageExtensions).find(
+      ([_, ext]) => ext.toLowerCase() === fileExtension
+    )?.[0] || 'plaintext';
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      setCode(content);
+      setLanguage(detectedLanguage);
+      if (!filename) {
+        setFilename(file.name);
+      }
+    };
+    reader.readAsText(file);
+  }, [filename]);
+
+  const handleSend = () => {
+    if (code.trim()) {
+      onSendCode(code, language, filename || undefined);
+      onClose();
+    }
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+    } catch (err) {
+      console.error('Failed to copy code: ', err);
+    }
+  };
+
+  const handleDownload = () => {
+    const extension = languageExtensions[language] || 'txt';
+    const blob = new Blob([code], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || `code.${extension}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const handleEditorDidMount = (editor: any) => {
     editorRef.current = editor;
     setIsLoading(false);
-    editor.focus();
   };
 
-  const handleSend = () => {
-    if (code.trim()) {
-      onSendCode(code.trim(), language);
-      onClose();
-    }
-  };
-
-  const handleCopyCode = () => {
-    if (code) {
-      navigator.clipboard.writeText(code);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      onClose();
-    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-      handleSend();
-    }
-  };
-
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
+  if (isLoading) {
+    return <div>Loading editor...</div>;
+  }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <div className="flex items-center space-x-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Share Code
-            </h2>
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              {languages.map((lang) => (
-                <option key={lang.value} value={lang.value}>
-                  {lang.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handleCopyCode}
-              disabled={!code.trim()}
-              className="p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md hover:bg-gray-100 transition-colors"
-              title="Copy code"
-            >
-              <Copy size={18} />
-            </button>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
-              title="Close"
-            >
-              <X size={18} />
-            </button>
-          </div>
-        </div>
-
-        {/* Editor */}
-        <div className="flex-1 min-h-0 p-4">
-          <div className="h-96 border border-gray-300 rounded-md overflow-hidden">
-            {isLoading ? (
-              <div className="flex items-center justify-center h-full bg-gray-50">
-                <div className="text-gray-500">Loading editor...</div>
-              </div>
-            ) : null}
-            <Editor
-              height="100%"
-              language={language}
-              value={code}
-              onChange={(value) => setCode(value || '')}
-              onMount={handleEditorDidMount}
-              options={{
-                minimap: { enabled: false },
-                scrollBeyondLastLine: false,
-                fontSize: 14,
-                lineNumbers: 'on',
-                roundedSelection: false,
-                automaticLayout: true,
-                wordWrap: 'on',
-                wrappingIndent: 'indent',
-                folding: true,
-                renderWhitespace: 'selection',
-                cursorBlinking: 'blink',
-                cursorStyle: 'line',
-                suggest: {
-                  showKeywords: true,
-                  showSnippets: true,
-                },
-                tabSize: 2,
-                insertSpaces: true,
-              }}
-              theme="vs"
+    <div className="relative bg-gray-800 rounded-lg overflow-hidden border border-gray-700 flex flex-col h-full">
+      {/* Header */}
+      <div className="flex justify-between items-center bg-gray-900 px-4 py-2 border-b border-gray-700">
+        <div className="flex items-center space-x-2">
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            className="bg-gray-800 text-white text-sm rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {languages.map((lang) => (
+              <option key={lang.value} value={lang.value}>
+                {lang.label}
+              </option>
+            ))}
+          </select>
+          <div className="relative">
+            <input
+              type="text"
+              value={filename}
+              onChange={(e) => setFilename(e.target.value)}
+              placeholder="filename.ext"
+              className="bg-gray-800 text-white text-sm rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
             />
+            {filename && (
+              <button
+                onClick={() => setFilename('')}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
+          <span className="text-gray-400 text-sm">
+            .{languageExtensions[language] || 'txt'}
+          </span>
         </div>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-700"
+            title="Upload file"
+          >
+            <Upload size={16} />
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            className="hidden"
+            accept={Object.values(languageExtensions).map(ext => `.${ext}`).join(',')}
+          />
+          <button
+            onClick={handleDownload}
+            className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-700"
+            title="Download file"
+          >
+            <Save size={16} />
+          </button>
+          <button
+            onClick={handleCopy}
+            className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-700"
+            title="Copy code"
+          >
+            <Copy size={16} />
+          </button>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-700"
+            title="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-gray-50">
-          <div className="text-sm text-gray-600">
-            Press <kbd className="px-2 py-1 bg-gray-200 rounded text-xs">Ctrl+Enter</kbd> to send, 
-            <kbd className="px-2 py-1 bg-gray-200 rounded text-xs ml-1">Esc</kbd> to close
-          </div>
-          
-          <div className="flex space-x-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSend}
-              disabled={!code.trim()}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-            >
-              <Send size={16} />
-              <span>Send Code</span>
-            </button>
-          </div>
+      {/* Editor */}
+      <div className="flex-1 min-h-0">
+        <Editor
+          height="100%"
+          language={language}
+          theme="vs-dark"
+          value={code}
+          onChange={(value) => setCode(value || '')}
+          onMount={handleEditorDidMount}
+          options={{
+            minimap: { enabled: true },
+            scrollBeyondLastLine: false,
+            fontSize: 14,
+            wordWrap: 'on',
+            automaticLayout: true,
+            lineNumbers: 'on',
+            renderWhitespace: 'selection',
+            formatOnPaste: true,
+            formatOnType: true,
+          }}
+        />
+      </div>
+
+      {/* Footer */}
+      <div className="bg-gray-900 px-4 py-2 border-t border-gray-700 flex justify-between items-center">
+        <div className="text-xs text-gray-400">
+          {language.toUpperCase()}
+          {filename && ` • ${filename}`}
         </div>
+        <button
+          onClick={handleSend}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded flex items-center space-x-1 text-sm font-medium"
+          disabled={!code.trim()}
+        >
+          <Send size={16} className="mr-1" />
+          Send Code
+        </button>
       </div>
     </div>
   );
