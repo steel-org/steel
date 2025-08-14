@@ -46,7 +46,17 @@ export default function ChatLayout() {
   useEffect(() => {
     if (currentUser) {
       // Set up WebSocket event listeners
-      setupWebSocketListeners();
+      const cleanup = setupWebSocketListeners();
+      
+      // Clean up event listeners on unmount
+      return () => {
+        wsService.off("users");
+        wsService.off("userJoined");
+        wsService.off("userLeft");
+        wsService.off("messageReceived");
+        wsService.off("newMessage");
+        // Add any other event listeners to clean up
+      };
     }
   }, [currentUser, selectedChat]);
 
@@ -80,10 +90,25 @@ export default function ChatLayout() {
   };
 
   const setupWebSocketListeners = () => {
+    // Handle initial users list
     wsService.on("users", (usersList: User[]) => {
       setUsers(usersList);
     });
 
+    // Handle user joined event
+    wsService.on("userJoined", (user: User) => {
+      addUser(user);
+    });
+
+    // Handle user left event
+    wsService.on("userLeft", (user: User) => {
+      updateUser(user.id, { 
+        status: 'offline',
+        lastSeen: new Date().toISOString() 
+      });
+    });
+
+    // Handle new messages
     wsService.on("messageReceived", (message: Message) => {
       if (selectedChat) {
         addMessage(selectedChat.id, message);

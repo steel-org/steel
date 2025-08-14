@@ -10,6 +10,7 @@ import {
   Camera,
 } from "lucide-react";
 import { User } from "../types";
+import { useChatStore } from "@/stores/chatStore";
 
 interface UserModalProps {
   user: User;
@@ -154,14 +155,21 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
         }
       );
 
+      const result = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to update profile");
+        throw new Error(result.error || "Failed to update profile");
       }
 
+      // Update the current user in the store
+      useChatStore.getState().setCurrentUser(result.data);
+      
+      // Show success message
+      alert("Profile updated successfully");
       onClose();
     } catch (error) {
       console.error("Failed to save user profile:", error);
-      alert("Failed to save profile. Please try again.");
+      alert(error instanceof Error ? error.message : "Failed to save profile. Please try again.");
     } finally {
       setIsUploading(false);
     }
@@ -279,7 +287,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              className="w-full p-2 border border-gray-200 rounded-md resize-none"
+              className="w-full p-2 border border-gray-200 rounded-md resize-none text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               rows={3}
               placeholder="Write something about yourself..."
             />

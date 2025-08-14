@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { apiService } from './api';
 import { useChatStore } from '@/stores/chatStore';
-import { MessageEvent, TypingEvent, ReactionEvent } from '@/types';
+import { User, MessageEvent, TypingEvent, ReactionEvent } from '@/types';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:5000';
 
@@ -11,17 +11,38 @@ class WebSocketService {
   private maxReconnectAttempts = 5;
   private eventCallbacks: { [key: string]: Function[] } = {};
 
-  connect(): Promise<void> {
-    return new Promise((resolve, reject) => {
+  async connect(): Promise<void> {
+    return new Promise(async (resolve, reject) => {
       const token = apiService.getToken();
       
       if (!token) {
         reject(new Error('No authentication token'));
         return;
       }
+      
+      let user;
+      try {
+        user = await apiService.getCurrentUser();
+        
+        if (!user) {
+          reject(new Error('No user data available'));
+          return;
+        }
+      } catch (error) {
+        console.error('Error getting current user:', error);
+        reject(new Error('Failed to get user data'));
+        return;
+      }
 
       this.socket = io(WS_URL, {
-        auth: { token },
+        auth: { 
+          token,
+          userId: user.id
+        },
+        query: {
+          userId: user.id,
+          username: user.username
+        },
         transports: ['websocket', 'polling'],
         reconnection: true,
         reconnectionAttempts: this.maxReconnectAttempts,
@@ -31,13 +52,19 @@ class WebSocketService {
       this.socket.on('connect', () => {
         console.log('Connected to WebSocket server');
         this.reconnectAttempts = 0;
-        resolve();
+        
+        this.socket?.emit('join', {
+          userId: user.id,
+          username: user.username,
+          avatar: user.avatar
+        });
+        
+        return resolve();
       });
 
       this.socket.on('disconnect', (reason) => {
         console.log('Disconnected from WebSocket server:', reason);
         if (reason === 'io server disconnect') {
-          // Server disconnected, try to reconnect
           this.socket?.connect();
         }
       });
@@ -47,16 +74,15 @@ class WebSocketService {
         this.reconnectAttempts++;
         
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-          reject(new Error('Failed to connect to WebSocket server'));
+          return reject(new Error('Failed to connect to WebSocket server'));
         }
       });
 
       this.socket.on('error', (error) => {
         console.error('WebSocket error:', error);
-        reject(error);
+        return reject(error);
       });
 
-      // Set up event handlers
       this.setupEventHandlers();
     });
   }
@@ -70,6 +96,77 @@ class WebSocketService {
 
   private setupEventHandlers(): void {
     if (!this.socket) return;
+
+    this.socket.on('users', (users: any[]) => {
+      try {
+        const validUsers = users.map(user => ({
+          id: user.id,
+          username: user.username || `user-${user.id}`,
+          email: user.email || `${user.id}@example.com`,
+          displayName: user.displayName || user.username || `User ${user.id}`,
+          avatar: user.avatar || `https://ui-avatars.com/api/?name=${user.username || user.id}&size=128`,
+          status: (user.status || 'offline') as 'online' | 'offline' | 'away' | 'busy',
+          lastSeen: user.lastSeen || new Date().toISOString(),
+          createdAt: user.createdAt || new Date().toISOString(),
+          bio: user.bio || '',
+          location: user.location || '',
+          website: user.website || '',
+          roles: Array.isArray(user.roles) ? user.roles : []
+        }));
+        this.emit('users', validUsers);
+      } catch (error) {
+        console.error('Error processing users list:', error);
+      }
+    });
+
+    this.socket.on('userJoined', (userData: any) => {
+      try {
+        const validUser: User = {
+          id: userData.id,
+          username: userData.username || `user-${userData.id}`,
+          email: userData.email || `${userData.id}@example.com`,
+          displayName: userData.displayName || userData.username || `User ${userData.id}`,
+          avatar: userData.avatar || `https://ui-avatars.com/api/?name=${userData.username || userData.id}&size=128`,
+          status: 'online',
+          lastSeen: new Date().toISOString(),
+          createdAt: userData.createdAt || new Date().toISOString(),
+          bio: userData.bio || '',
+          location: userData.location || '',
+          website: userData.website || '',
+          roles: Array.isArray(userData.roles) ? userData.roles : []
+        };
+        this.emit('userJoined', validUser);
+        useChatStore.getState().addUser(validUser);
+      } catch (error) {
+        console.error('Error processing user joined:', error);
+      }
+    });
+
+    this.socket.on('userLeft', (userData: any) => {
+      try {
+        const validUser: User = {
+          id: userData.id,
+          username: userData.username || `user-${userData.id}`,
+          email: userData.email || `${userData.id}@example.com`,
+          displayName: userData.displayName || userData.username || `User ${userData.id}`,
+          avatar: userData.avatar || `https://ui-avatars.com/api/?name=${userData.username || userData.id}&size=128`,
+          status: 'offline',
+          lastSeen: new Date().toISOString(),
+          createdAt: userData.createdAt || new Date().toISOString(),
+          bio: userData.bio || '',
+          location: userData.location || '',
+          website: userData.website || '',
+          roles: Array.isArray(userData.roles) ? userData.roles : []
+        };
+        this.emit('userLeft', validUser);
+        useChatStore.getState().updateUser(validUser.id, { 
+          status: 'offline',
+          lastSeen: validUser.lastSeen 
+        });
+      } catch (error) {
+        console.error('Error processing user left:', error);
+      }
+    });
 
     // Message events
     this.socket.on('message_received', (data: MessageEvent) => {

@@ -71,11 +71,19 @@ export const useChatStore = create<ChatState>()(
         addUser: (user) => set((state) => ({
           users: [...state.users.filter(u => u.id !== user.id), user]
         })),
-        updateUser: (userId, updates) => set((state) => ({
-          users: state.users.map(user => 
-            user.id === userId ? { ...user, ...updates } : user
-          )
-        })),
+        updateUser: (userId, updates) => set((state) => {
+          // Ensure lastSeen is a string
+          const safeUpdates = { ...updates };
+          if ('lastSeen' in safeUpdates && safeUpdates.lastSeen) {
+            safeUpdates.lastSeen = new Date(safeUpdates.lastSeen).toISOString();
+          }
+          
+          return {
+            users: state.users.map(user => 
+              user.id === userId ? { ...user, ...safeUpdates } : user
+            )
+          };
+        }),
         removeUser: (userId) => set((state) => ({
           users: state.users.filter(user => user.id !== userId)
         })),
