@@ -240,7 +240,7 @@ app.get("/health", (req, res) => {
 app.get("/info", (req, res) => {
   res.json({
     name: "Steel Private Chat Backend",
-    version: "3.3.1",
+    version: "3.3.2",
     connectedUsers: connectedUsers.size,
     uptime: process.uptime(),
   });
@@ -252,5 +252,5 @@ server.listen(PORT, () => {
   console.log(`🚀 Steel Private Chat Backend running on port ${PORT}`);
   console.log(`📡 Socket.io server ready for connections`);
   console.log(`🌐 Health check: http://localhost:${PORT}/health`);
-  console.log(`This is Version 3.3.1`);
+  console.log(`This is Version 3.3.2`);
 });

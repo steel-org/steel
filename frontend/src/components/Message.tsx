@@ -54,7 +54,7 @@ const MessageComponent: React.FC<MessageProps> = ({
 
   return (
     <div
-      className={`group flex ${isOwn ? 'justify-end' : 'justify-start'} mb-4`}
+      className={`group flex ${isOwn ? 'justify-end' : 'justify-start'} mb-4 px-2`}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
     >
@@ -64,20 +64,20 @@ const MessageComponent: React.FC<MessageProps> = ({
             <img
               src={message.sender.avatar || '/default-avatar.png'}
               alt={message.sender.username}
-              className="w-6 h-6 rounded-full mr-2"
+              className="w-6 h-6 rounded-full mr-2 ring-2 ring-offset-1 ring-gray-200"
             />
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
               {message.sender.username}
             </span>
           </div>
         )}
 
         <div
-          className={`px-4 py-2 rounded-lg ${
+          className={`px-4 py-3 rounded-lg shadow-sm ${
             isOwn
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-100 text-gray-900'
-          } ${isCode ? 'font-mono text-sm' : ''}`}
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-white text-gray-800 border border-gray-200 hover:border-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:border-gray-600'
+          } ${isCode ? 'font-mono text-sm' : ''} transition-all duration-150`}
         >
           {message.replyTo && (
             <div className="mb-2 pl-2 border-l-2 border-gray-300 opacity-70">
@@ -153,19 +153,19 @@ const MessageComponent: React.FC<MessageProps> = ({
           )}
         </div>
 
-        <div className="flex items-center justify-between mt-1">
-          <div className="text-xs text-gray-500">
+        <div className="flex items-center justify-between mt-2">
+          <div className={`text-xs ${isOwn ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'}`}>
             {formatTime(message.createdAt)}
             {message.editedAt && (
-              <span className="ml-1">(edited)</span>
+              <span className="ml-1 opacity-80">(edited)</span>
             )}
           </div>
 
           {showActions && !isEditing && (
-            <div className="flex items-center space-x-1">
+            <div className={`flex items-center space-x-1 p-1 rounded-full ${isOwn ? 'bg-blue-700/30' : 'bg-gray-100 dark:bg-gray-700'}`}>
               <button
                 onClick={() => onReplyToMessage(message)}
-                className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                className={`p-1.5 rounded-full ${isOwn ? 'text-blue-100 hover:bg-blue-500/50' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
                 title="Reply"
               >
                 <Reply size={14} />
@@ -174,7 +174,7 @@ const MessageComponent: React.FC<MessageProps> = ({
               {isCode && (
                 <button
                   onClick={handleCopyCode}
-                  className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                  className={`p-1.5 rounded-full ${isOwn ? 'text-blue-100 hover:bg-blue-500/50' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
                   title="Copy code"
                 >
                   <Copy size={14} />
@@ -184,7 +184,7 @@ const MessageComponent: React.FC<MessageProps> = ({
               {isOwn && onEditMessage && (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                  className={`p-1.5 rounded-full ${isOwn ? 'text-blue-100 hover:bg-blue-500/50' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
                   title="Edit"
                 >
                   <Edit2 size={14} />
@@ -194,7 +194,7 @@ const MessageComponent: React.FC<MessageProps> = ({
               {isOwn && (
                 <button
                   onClick={() => onDeleteMessage(message.id)}
-                  className="p-1 text-gray-400 hover:text-red-600 rounded"
+                  className="p-1.5 rounded-full text-red-400 hover:bg-red-500/30 hover:text-red-300"
                   title="Delete"
                 >
                   <Trash2 size={14} />
