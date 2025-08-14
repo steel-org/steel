@@ -23,7 +23,6 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
 
   const [username, setUsername] = useState(user.username || "");
   const [displayName, setDisplayName] = useState(user.displayName || "");
-  const [status, setStatus] = useState(user.status || "online");
   const [avatar, setAvatar] = useState(user.avatar || "");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [bio, setBio] = useState(user.bio || "");
@@ -137,23 +136,20 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
         finalAvatar = generateAvatar();
       }
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/users/profile`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("steel-token")}`,
-          },
-          body: JSON.stringify({
-            username,
-            displayName,
-            status,
-            avatar: finalAvatar,
-            bio,
-          }),
-        }
-      );
+      const response = await fetch(`/api/users/${user?.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username,
+          displayName,
+          bio,
+          location: "",
+          website: "",
+          avatar: avatar || null,
+        }),
+      });
 
       const result = await response.json();
 
@@ -163,7 +159,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
 
       // Update the current user in the store
       useChatStore.getState().setCurrentUser(result.data);
-      
+
       // Show success message
       alert("Profile updated successfully");
       onClose();
@@ -257,28 +253,6 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
                 placeholder="Display Name"
               />
             )}
-            <div className="flex items-center space-x-2">
-              <div
-                className={`w-3 h-3 rounded-full ${
-                  status === "online"
-                    ? "bg-green-500"
-                    : status === "away"
-                    ? "bg-yellow-500"
-                    : "bg-gray-500"
-                }`}
-              />
-              <span className="text-sm text-gray-600 capitalize">
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as "online" | "offline" | "away" | "busy")}
-                  className="bg-transparent capitalize outline-none cursor-pointer"
-                >
-                  <option value="online">Online</option>
-                  <option value="away">Away</option>
-                  <option value="offline">Offline</option>
-                </select>
-              </span>
-            </div>
           </div>
 
           {/* Bio */}

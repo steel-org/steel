@@ -22,7 +22,8 @@ export interface Chat {
   avatar?: string;
   createdAt: string;
   updatedAt: string;
-  lastMessage?: string;
+  lastMessage?: string | Date;
+  messages?: Message[];
   members: ChatMember[];
   participants: string[]; 
   owner?: User;
@@ -39,7 +40,7 @@ export interface ChatMember {
 
 export interface Message {
   id: string;
-  chatId?: string;  // Added this line to fix the TypeScript error
+  chatId?: string;
   content: string;
   type: 'TEXT' | 'CODE' | 'FILE' | 'SYSTEM';
   status: 'SENT' | 'DELIVERED' | 'READ';

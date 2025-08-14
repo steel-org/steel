@@ -19,11 +19,17 @@ declare global {
   }
 }
 
+const skipAuthForPaths = ['/api/auth/logout'];
+
 export const auth = async (
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<Response | void> => {
+  if (skipAuthForPaths.includes(req.path)) {
+    return next();
+  }
+
   try {
     const token = req.header("Authorization")?.replace("Bearer ", "");
 

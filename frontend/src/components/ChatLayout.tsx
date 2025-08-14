@@ -47,6 +47,15 @@ export default function ChatLayout() {
     if (currentUser) {
       // Set up WebSocket event listeners
       const cleanup = setupWebSocketListeners();
+      const socket = wsService.getSocket();
+      if (socket) {
+        socket.on('connect', handleConnect);
+        socket.on('disconnect', handleDisconnect);
+        socket.on('users', handleUsers);
+        socket.on('userJoined', handleUserJoined);
+        socket.on('userLeft', handleUserLeft);
+        socket.on('userStatusChange', handleUserStatusChange);
+      }
       
       // Clean up event listeners on unmount
       return () => {
@@ -56,6 +65,15 @@ export default function ChatLayout() {
         wsService.off("messageReceived");
         wsService.off("newMessage");
         // Add any other event listeners to clean up
+        const socket = wsService.getSocket();
+        if (socket) {
+          socket.off('connect', handleConnect);
+          socket.off('disconnect', handleDisconnect);
+          socket.off('users', handleUsers);
+          socket.off('userJoined', handleUserJoined);
+          socket.off('userLeft', handleUserLeft);
+          socket.off('userStatusChange', handleUserStatusChange);
+        }
       };
     }
   }, [currentUser, selectedChat]);
@@ -183,34 +201,77 @@ export default function ChatLayout() {
       }
     });
 
-    wsService.on("userJoined", (user: User) => {
-      addUser(user);
-    });
-
-    wsService.on("userLeft", (user: User) => {
-      updateUser(user.id, { status: "offline", lastSeen: user.lastSeen });
-    });
-
-    wsService.on(
-      "userTyping",
-      ({
-        userId,
-        username,
-        isTyping,
-      }: {
-        userId: string;
-        username: string;
-        isTyping: boolean;
-      }) => {
-        if (selectedChat) {
-          if (isTyping) {
-            addTypingUser(selectedChat.id, username);
-          } else {
-            removeTypingUser(selectedChat.id, username);
-          }
+    wsService.on("userTyping", ({
+      userId,
+      username,
+      isTyping,
+    }: {
+      userId: string;
+      username: string;
+      isTyping: boolean;
+    }) => {
+      if (selectedChat) {
+        if (isTyping) {
+          addTypingUser(selectedChat.id, username);
+        } else {
+          removeTypingUser(selectedChat.id, username);
         }
       }
-    );
+    });
+  };
+
+  const handleConnect = () => {
+    console.log('Connected to WebSocket');
+    // Re-authenticate and rejoin rooms on reconnect
+    if (currentUser) {
+      const socket = wsService.getSocket();
+      if (socket) {
+        socket.emit('join', {
+          username: currentUser.username,
+          userId: currentUser.id,
+          avatar: currentUser.avatar,
+        });
+      }
+    }
+  };
+
+  const handleDisconnect = () => {
+    console.log('Disconnected from WebSocket');
+  };
+
+  const handleUsers = (users: any[]) => {
+    // Update users list in the store
+    const formattedUsers = users.map(user => ({
+      ...user,
+      // Ensure lastSeen is a string
+      lastSeen: user.lastSeen ? new Date(user.lastSeen).toISOString() : new Date().toISOString(),
+    }));
+    setUsers(formattedUsers);
+  };
+
+  const handleUserJoined = (userData: any) => {
+    // Add or update user in the store with online status
+    addUser({
+      ...userData,
+      status: 'online',
+      lastSeen: new Date().toISOString(),
+    });
+  };
+
+  const handleUserLeft = (userData: any) => {
+    // Update user status to offline with current timestamp
+    updateUser(userData.id, { 
+      status: 'offline',
+      lastSeen: new Date().toISOString() 
+    });
+  };
+
+  const handleUserStatusChange = (data: { userId: string; status: string; lastSeen: string }) => {
+    const { userId, status, lastSeen } = data;
+    updateUser(userId, { 
+      status: status as 'online' | 'offline' | 'away' | 'busy',
+      lastSeen: new Date(lastSeen).toISOString()
+    });
   };
 
   const loadMessagesFromStorage = (chatId: string): Message[] => {
@@ -242,15 +303,34 @@ export default function ChatLayout() {
     await connectWebSocket();
   };
 
-  const handleLogout = async () => {
+  const handleLogout = async (fromSettings = false) => {
     try {
-      await apiService.logout();
+      // Clear WebSocket connections first
       wsService.disconnect();
-      setCurrentUser(null);
-      setSelectedChat(null);
-      setShowAuthModal(true);
+      
+      // Clear the auth token
+      apiService.clearToken();
+      
+      // Clear the chat store
+      useChatStore.getState().logout();
+      
+      // Clear local storage
+      localStorage.removeItem('steel-chat-store');
+      
+      // Clear cookies
+      document.cookie = 'token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      
+      // If called from settings, don't force reload as it will be handled by the settings component
+      if (!fromSettings) {
+        // Force a full page reload to reset all state
+        window.location.href = '/';
+      }
     } catch (error) {
-      console.error("Logout failed:", error);
+      console.error('Error during logout:', error);
+      // Still redirect even if there was an error
+      if (!fromSettings) {
+        window.location.href = '/';
+      }
     }
   };
 
@@ -374,8 +454,8 @@ export default function ChatLayout() {
       id: tempId,
       chatId: selectedChat.id,
       content: text,
-      type: type as any, // Temporary cast until we have proper type checking
-      status: 'SENT', // Using SENT as initial status for optimistic update
+      type: type as any, 
+      status: 'SENT', 
       sender: currentUser,
       createdAt: now,
       updatedAt: now,

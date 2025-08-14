@@ -88,9 +88,36 @@ class WebSocketService {
   }
 
   disconnect(): void {
-    if (this.socket) {
+    if (!this.socket) {
+      return;
+    }
+
+    try {
+      if (this.socket.connected) {
+        this.socket.emit('user_disconnect');
+      }
+
+      this.socket.io?.reconnection(false);
+      this.socket.removeAllListeners();
       this.socket.disconnect();
+      
+      if (this.socket.io && (this.socket.io as any).reconnectionTimer) {
+        clearTimeout((this.socket.io as any).reconnectionTimer);
+      }
+      
       this.socket = null;
+      
+      this.reconnectAttempts = 0;
+      
+      this.eventCallbacks = {};
+      
+      console.log('WebSocket disconnected and cleaned up');
+    } catch (error) {
+      console.error('Error during WebSocket disconnection:', error);
+      if (this.socket) {
+        this.socket = null;
+      }
+      this.eventCallbacks = {};
     }
   }
 
@@ -116,6 +143,18 @@ class WebSocketService {
         this.emit('users', validUsers);
       } catch (error) {
         console.error('Error processing users list:', error);
+      }
+    });
+
+    this.socket.on('userStatusChange', (data: { userId: string; status: string; lastSeen: string }) => {
+      try {
+        const { userId, status, lastSeen } = data;
+        useChatStore.getState().updateUser(userId, { 
+          status: status as 'online' | 'offline' | 'away' | 'busy',
+          lastSeen: new Date(lastSeen).toISOString()
+        });
+      } catch (error) {
+        console.error('Error processing user status change:', error);
       }
     });
 
@@ -317,17 +356,14 @@ class WebSocketService {
     this.socket.emit('delete_message', { chatId, messageId });
   }
 
-  // Get connection status
   isConnected(): boolean {
     return this.socket?.connected || false;
   }
 
-  // Get socket instance (for advanced usage)
   getSocket(): Socket | null {
     return this.socket;
   }
 
-  // Event emitter methods for external components
   on(event: string, callback: Function): void {
     if (!this.eventCallbacks[event]) {
       this.eventCallbacks[event] = [];

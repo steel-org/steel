@@ -1,11 +1,16 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { User, Chat, Message, TypingEvent, MessageEvent, ReactionEvent, Notification } from '@/types';
+import { wsService } from '@/services/websocket';
 
 interface ChatState {
   // Current user
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
+  logout: () => void;
+  
+  // Message actions
+  deleteMessage: (messageId: string, deleteForEveryone: boolean) => Promise<boolean>;
   
   // Users
   users: User[];
@@ -54,7 +59,8 @@ interface ChatState {
   handleMessageReceived: (event: MessageEvent) => void;
   handleTypingEvent: (event: TypingEvent) => void;
   handleReactionEvent: (event: ReactionEvent) => void;
-  handleUserStatusChange: (userId: string, status: string) => void;
+  handleUserStatusChange: (userId: string, status: 'online' | 'offline' | 'away' | 'busy') => void;
+  handleMessageDeleted: (data: { messageId: string; chatId: string; deletedForEveryone: boolean }) => void;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -71,19 +77,27 @@ export const useChatStore = create<ChatState>()(
         addUser: (user) => set((state) => ({
           users: [...state.users.filter(u => u.id !== user.id), user]
         })),
-        updateUser: (userId, updates) => set((state) => {
-          // Ensure lastSeen is a string
-          const safeUpdates = { ...updates };
-          if ('lastSeen' in safeUpdates && safeUpdates.lastSeen) {
-            safeUpdates.lastSeen = new Date(safeUpdates.lastSeen).toISOString();
-          }
-          
-          return {
-            users: state.users.map(user => 
-              user.id === userId ? { ...user, ...safeUpdates } : user
-            )
-          };
-        }),
+        updateUser: (userId: string, updates: Partial<User>) =>
+    set((state) => {
+      const updatedUsers = state.users.map((user) =>
+        user.id === userId 
+          ? { 
+              ...user, 
+              ...updates,
+              lastSeen: updates.lastSeen || user.lastSeen || new Date().toISOString()
+            } 
+          : user
+      );
+
+      if (state.currentUser?.id === userId) {
+        const currentUser = updatedUsers.find(u => u.id === userId);
+        if (currentUser) {
+          return { ...state, users: updatedUsers, currentUser };
+        }
+      }
+
+      return { ...state, users: updatedUsers };
+    }),
         removeUser: (userId) => set((state) => ({
           users: state.users.filter(user => user.id !== userId)
         })),
@@ -307,8 +321,74 @@ export const useChatStore = create<ChatState>()(
           }
         },
         
-        handleUserStatusChange: (userId, status) => {
-          get().updateUser(userId, { status: status as any });
+        handleUserStatusChange: (userId, status: 'online' | 'offline' | 'away' | 'busy') => {
+          get().updateUser(userId, { status });
+        },
+        
+        handleMessageDeleted: ({ messageId, chatId, deletedForEveryone }) => {
+          const { messages, setMessages, selectedChat } = get();
+          
+          // If deleted for everyone or if it's the current user's chat
+          if (deletedForEveryone || (selectedChat && selectedChat.id === chatId)) {
+            const chatMessages = messages[chatId] || [];
+            const updatedMessages = chatMessages.filter(msg => msg.id !== messageId);
+            setMessages(chatId, updatedMessages);
+            // Note: We're not persisting this to storage since it's a soft delete
+          }
+        },
+        
+        deleteMessage: async (messageId: string, deleteForEveryone: boolean) => {
+          const { selectedChat, messages, setMessages } = get();
+          const socket = wsService.getSocket();
+          
+          if (!selectedChat || !socket) return false;
+          
+          try {
+            // Optimistically remove from UI
+            const chatMessages = messages[selectedChat.id] || [];
+            const updatedMessages = chatMessages.filter(msg => msg.id !== messageId);
+            setMessages(selectedChat.id, updatedMessages);
+            
+            // Notify server
+            socket.emit("deleteMessage", {
+              messageId,
+              chatId: selectedChat.id,
+              deleteForEveryone
+            });
+            
+            return true;
+          } catch (error) {
+            console.error('Failed to delete message:', error);
+            // Revert optimistic update on error
+            const chatMessages = messages[selectedChat.id] || [];
+            setMessages(selectedChat.id, [...chatMessages]);
+            return false;
+          }
+        },
+        
+        // Logout function that handles cleanup even when the user is no longer in the database
+        logout: () => {
+          // Clear all state
+          set({
+            currentUser: null,
+            users: [],
+            chats: [],
+            selectedChat: null,
+            messages: {},
+            typingUsers: {},
+            searchQuery: '',
+            isLoading: false,
+            notifications: []
+          });
+          
+          // Clear any stored tokens
+          localStorage.removeItem('steel_token');
+          document.cookie = 'token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+          
+          // Force a page reload to ensure all components reset
+          if (typeof window !== 'undefined') {
+            window.location.href = '/';
+          }
         }
       }),
       {

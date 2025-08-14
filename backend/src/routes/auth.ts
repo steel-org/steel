@@ -178,24 +178,34 @@ router.get("/me", auth, async (req: Request, res: Response) => {
 });
 
 // Logout user
-router.post("/logout", auth, async (req: Request, res: Response) => {
-  const userId = (req as any).user?.id;
-  
+router.post("/logout", async (req: Request, res: Response) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { userId: string };
+        const userId = decoded.userId;
 
-    if (user) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          status: "offline",
-          lastSeen: new Date(),
-        },
-      });
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+        });
+
+        if (user) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              status: "offline",
+              lastSeen: new Date(),
+            },
+          });
+        }
+      } catch (error) {
+        console.log('Invalid or expired token during logout, proceeding with cleanup');
+      }
     }
 
+    // Clear cookies
     res.clearCookie('token');
     res.clearCookie('refreshToken');
 
@@ -205,9 +215,12 @@ router.post("/logout", auth, async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Logout error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Server error during logout',
+    res.clearCookie('token');
+    res.clearCookie('refreshToken');
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Logged out successfully (with cleanup)',
     });
   }
 });

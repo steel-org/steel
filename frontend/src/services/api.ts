@@ -28,7 +28,8 @@ class ApiService {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    skipAuth = false
   ): Promise<ApiResponse<T>> {
     const url = `${API_BASE_URL}${endpoint}`;
     const token = this.getToken();
@@ -36,7 +37,7 @@ class ApiService {
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
+        ...(!skipAuth && token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
       },
       ...options,
@@ -44,9 +45,20 @@ class ApiService {
 
     try {
       const response = await fetch(url, config);
+      
+      // For logout, we might get a 204 No Content response
+      if (response.status === 204) {
+        return { success: true, data: {} as T };
+      }
+      
       const data = await response.json();
 
       if (!response.ok) {
+        // If we get a 401 on logout, it's okay - we still want to clear the token
+        if (endpoint === '/api/auth/logout' && response.status === 401) {
+          this.clearToken();
+          return { success: true, data: { message: 'Logged out successfully' } as T };
+        }
         throw new Error(data.error || 'Request failed');
       }
 
@@ -84,9 +96,45 @@ class ApiService {
     return response.data!;
   }
 
-  async logout(): Promise<void> {
-    await this.request('/api/auth/logout', { method: 'POST' });
-    this.clearToken();
+  async logout(): Promise<{ success: boolean; message?: string }> {
+    try {
+      const token = this.getToken();
+      
+      this.clearToken();
+      
+      if (token) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (!response.ok && response.status !== 401) {
+            console.warn('Logout API call failed with status:', response.status);
+          }
+        } catch (error) {
+          console.warn('Error during logout API call:', error);
+        }
+      }
+      
+      localStorage.removeItem('steel_token');
+      document.cookie = 'token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      
+      return { success: true, message: 'Logged out successfully' };
+    } catch (error) {
+      console.error('Unexpected error during logout:', error);
+      this.clearToken();
+      localStorage.removeItem('steel_token');
+      document.cookie = 'token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      
+      return { 
+        success: true, 
+        message: 'Logged out (some cleanup operations may have failed)' 
+      };
+    }
   }
 
   async getCurrentUser(): Promise<User> {

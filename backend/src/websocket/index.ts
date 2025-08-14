@@ -2,6 +2,9 @@
 import { Server, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 import { logger } from "../utils/logger";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -10,7 +13,13 @@ interface AuthenticatedSocket extends Socket {
 interface ConnectedUser {
   id: string;
   username: string;
-  avatar?: string;
+  displayName?: string | null;
+  avatar?: string | null;
+  status?: string;
+  bio?: string | null;
+  location?: string | null;
+  website?: string | null;
+  roles?: string[];
   joinedAt: Date;
   isOnline: boolean;
   lastSeen: Date;
@@ -39,28 +48,76 @@ export const setupWebSocket = (io: Server) => {
   io.on("connection", (socket: AuthenticatedSocket) => {
     logger.info(`User connected: ${socket.id} (userId: ${socket.userId})`);
 
-    // Handle user joining
-    socket.on("join", (userData: { username: string; avatar?: string }) => {
-      const { username, avatar } = userData;
+    socket.on("join", async (userData: { userId: string; username: string; avatar?: string }) => {
+      const { userId, username, avatar } = userData;
 
-      const user: ConnectedUser = {
-        id: socket.id,
-        username: username || `User-${socket.id.slice(0, 6)}`,
-        avatar: avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(username || `User-${socket.id.slice(0, 6)}`)}&background=3b82f6&color=ffffff&size=128&rounded=true`,
-        joinedAt: new Date(),
-        isOnline: true,
-        lastSeen: new Date(),
-      };
+      try {
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            status: 'online',
+            lastSeen: new Date()
+          },
+        });
 
-      connectedUsers.set(socket.id, user);
+        const user: ConnectedUser = {
+          id: userId,
+          username: username || `User-${socket.id.slice(0, 6)}`,
+          avatar: avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(username || `User-${socket.id.slice(0, 6)}`)}&background=3b82f6&color=ffffff&size=128&rounded=true`,
+          joinedAt: new Date(),
+          isOnline: true,
+          lastSeen: new Date(),
+        };
 
-      // Send current users list to all clients
-      io.emit("users", Array.from(connectedUsers.values()));
+        connectedUsers.set(userId, user);
 
-      // Notify others about new user
-      socket.broadcast.emit("userJoined", user);
+        const dbUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatar: true,
+            status: true,
+            lastSeen: true,
+            createdAt: true,
+            bio: true,
+            location: true,
+            website: true,
+            roles: true
+          }
+        });
 
-      logger.info(`User ${username} joined the chat`);
+        if (dbUser) {   
+          const connectedUser: ConnectedUser = {
+            id: dbUser.id,
+            username: dbUser.username,
+            displayName: dbUser.displayName || undefined,
+            avatar: dbUser.avatar || undefined,
+            status: dbUser.status,
+            bio: dbUser.bio || undefined,
+            location: dbUser.location || undefined,
+            website: dbUser.website || undefined,
+            roles: dbUser.roles,
+            joinedAt: new Date(),
+            isOnline: true,
+            lastSeen: new Date(dbUser.lastSeen)
+          };
+          connectedUsers.set(userId, connectedUser);
+
+          io.emit("users", Array.from(connectedUsers.values()));
+
+          socket.broadcast.emit("userStatusChange", {
+            userId: dbUser.id,
+            status: 'online',
+            lastSeen: new Date()
+          });
+
+          logger.info(`User ${username} (${userId}) joined the chat`);
+        }
+      } catch (error) {
+        logger.error('Error in join handler:', error);
+      }
     });
 
     // Handle private messages
@@ -176,36 +233,110 @@ export const setupWebSocket = (io: Server) => {
     });
 
     // Handle message deletion
-    socket.on("deleteMessage", (data: { messageId: string; recipientId: string }) => {
-      const { messageId, recipientId } = data;
-      const user = connectedUsers.get(socket.id);
+    socket.on("deleteMessage", async (data: { 
+      messageId: string; 
+      chatId: string;
+      deleteForEveryone: boolean;
+    }) => {
+      const { messageId, chatId, deleteForEveryone } = data;
+      const user = Array.from(connectedUsers.values()).find(u => u.id === socket.userId);
       if (!user) return;
 
-      // Notify sender about deletion
-      socket.emit("messageDeleted", { messageId });
+      try {
+        const messageWithChat = await prisma.message.findUnique({
+          where: { id: messageId },
+          include: { 
+            chat: {
+              include: {
+                members: true
+              }
+            } 
+          }
+        });
 
-      // Notify recipient about deletion
-      const recipientSocket = io.sockets.sockets.get(recipientId);
-      if (recipientSocket) {
-        recipientSocket.emit("messageDeleted", { messageId });
+        if (!messageWithChat || !messageWithChat.chat) {
+          console.log('Message or chat not found');
+          return;
+        }
+        
+        const isParticipant = messageWithChat.chat.members.some(member => member.userId === user.id);
+        if (!isParticipant) {
+          console.log('User is not a participant in this chat');
+          return;
+        }
+
+        if (deleteForEveryone) {
+          if (messageWithChat.senderId !== user.id) {
+            console.log('User is not the sender of this message');
+            return;
+          }
+          
+          await prisma.message.delete({
+            where: { id: messageId }
+          });
+
+          const participants = await prisma.chat.findUnique({
+            where: { id: chatId },
+            select: { members: { select: { userId: true } } }
+          });
+
+          if (participants) {
+            const participantUserIds = participants.members.map(m => m.userId);
+            const participantSockets = Array.from(connectedUsers.entries())
+              .filter(([_, u]) => participantUserIds.includes(u.id))
+              .map(([socketId]) => socketId);
+
+            if (participantSockets.length > 0) {
+              io.to(participantSockets).emit("messageDeleted", { 
+                messageId,
+                chatId,
+                deletedForEveryone: true
+              });
+            }
+          }
+        } else {
+          socket.emit("messageDeleted", { 
+            messageId,
+            chatId,
+            deletedForEveryone: false
+          });
+        }
+      } catch (error) {
+        console.error('Error in deleteMessage handler:', error);
+       socket.emit("messageDeletionFailed", { 
+          messageId,
+          error: "Failed to delete message" 
+        });
       }
     });
-
+    
     // Handle user going offline
-    socket.on("disconnect", () => {
-      const user = connectedUsers.get(socket.id);
-      if (user) {
-        user.isOnline = false;
-        user.lastSeen = new Date();
+    socket.on("disconnect", async () => {
+      try {
+        const user = Array.from(connectedUsers.values()).find(u => u.id === socket.userId);
+        if (user) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              status: 'offline',
+              lastSeen: new Date()
+            },
+          });
 
-        // Update users list
-        io.emit("users", Array.from(connectedUsers.values()));
+          connectedUsers.delete(user.id);
 
-        // Notify others about user going offline
-        socket.broadcast.emit("userLeft", user);
+          socket.broadcast.emit("userStatusChange", {
+            userId: user.id,
+            status: 'offline',
+            lastSeen: new Date()
+          });
 
-        connectedUsers.delete(socket.id);
-        logger.info(`User ${user.username} left the chat`);
+          io.emit("users", Array.from(connectedUsers.values()));
+
+          logger.info(`User ${user.username} (${user.id}) left the chat`);
+        }
+      } catch (error) {
+        logger.error('Error in disconnect handler:', error);
       }
     });
   });
