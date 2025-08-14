@@ -1,6 +1,6 @@
 # 📋 Steel - Version Management Guide
 
-## Current Version: v3.3.2
+## Current Version: v3.3.3
 
 Steel Chat follows [Semantic Versioning](https://semver.org/) (SemVer) for version management.
 
@@ -16,7 +16,20 @@ MAJOR.MINOR.PATCH
 
 ## Version History
 
-### v3.3.2 (Current) - Patch Release
+### v3.3.3 (Current) - Patch Release
+
+**Release Date**: 14/08/2025
+**Status**: Production Ready
+**Type**: Patch
+
+**Changes**:
+
+- Version bump to v3.3.3 in all project files and UI components
+- Clear authentication cookies on logout
+- Improve logout route to handle deleted users gracefully
+- Minor performance improvements and bug fixes
+
+### v3.3.2 (Previous) - Patch Release
 
 **Release Date**: 14/08/2025
 **Status**: Production Ready
@@ -454,8 +467,8 @@ MAJOR.MINOR.PATCH
 
 ### Current Version
 
-- **Backend**: v3.3.2
-- **Frontend**: v3.3.2
+- **Backend**: v3.3.3
+- **Frontend**: v3.3.3
 - **Status**: Production Ready
 
 ### Next Release

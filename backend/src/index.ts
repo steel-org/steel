@@ -72,7 +72,7 @@ app.get("/api/health", (req, res) => {
   res.json({
     success: true,
     message: "Server is running",
-    version: "3.3.0",
+    version: "3.3.3",
     timestamp: new Date().toISOString(),
   });
 });
@@ -83,9 +83,9 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 server.listen(Number(PORT), "0.0.0.0", () => {
-  logger.info(`🚀 Steel Backend v3.3.0 running on port ${PORT}`);
+  logger.info(`🚀 Steel Backend v3.3.3 running on port ${PORT}`);
   logger.info(`📡 Socket.io server ready for connections`);
-  logger.info(`🌐 Health check: http://0.0.0.0:${PORT}/api/health`);
+  logger.info(`🌐 Health check: http://localhost:${PORT}/api/health`);
   logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
 });
 
