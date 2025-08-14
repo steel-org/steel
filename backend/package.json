@@ -1,6 +1,6 @@
 {
   "name": "steel-backend",
-  "version": "3.3.2",
+  "version": "3.3.3",
   "description": "Modern chat backend for Steel developer tool",
   "main": "dist/index.js",
   "scripts": {

@@ -179,24 +179,35 @@ router.get("/me", auth, async (req: Request, res: Response) => {
 
 // Logout user
 router.post("/logout", auth, async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  
   try {
-    // Update user status to offline
-    await prisma.user.update({
-      where: { id: (req as any).user.id },
-      data: {
-        status: "offline",
-        lastSeen: new Date(),
-      },
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
     });
 
-    return res.json({
+    if (user) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          status: "offline",
+          lastSeen: new Date(),
+        },
+      });
+    }
+
+    res.clearCookie('token');
+    res.clearCookie('refreshToken');
+
+    return res.status(200).json({
       success: true,
-      message: "Logged out successfully",
+      message: 'Logged out successfully',
     });
   } catch (error) {
+    console.error('Logout error:', error);
     return res.status(500).json({
       success: false,
-      error: "Server error",
+      error: 'Server error during logout',
     });
   }
 });
