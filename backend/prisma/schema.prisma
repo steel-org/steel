@@ -31,6 +31,7 @@ model User {
   chatMemberships  ChatMember[]
   messageReactions MessageReaction[]
   messageEdits     MessageEdit[]
+  deletedMessages  Message[] @relation("MessageDeletions")
   ownedGroups      Chat[]            @relation("GroupOwner")
   downloadLogs     DownloadLog[]
 
@@ -96,6 +97,7 @@ model Message {
   attachments Attachment[]
   reactions   MessageReaction[]
   edits       MessageEdit[]
+  deletedFor  User[]   @relation("MessageDeletions")
 
   @@map("messages")
 }

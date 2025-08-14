@@ -7,7 +7,7 @@ export default function Document() {
         <meta charSet="utf-8" />
         <meta
           name="description"
-          content="Steel - Modern Developer Chat Platform v3.3.3"
+          content="Steel - Modern Developer Chat Platform v3.4.0"
         />
         <link rel="icon" href="/favicon.ico" />
       </Head>

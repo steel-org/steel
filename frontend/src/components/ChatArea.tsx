@@ -11,7 +11,7 @@ interface ChatAreaProps {
   onSendMessage: (text: string, type?: string, attachment?: any) => void;
   onSendCodeSnippet: (code: string, language: string) => void;
   onTyping: (isTyping: boolean) => void;
-  onDeleteMessage: (messageId: string) => void;
+  onDeleteMessage?: (messageId: string) => void;
   onReplyToMessage: (message: Message) => void;
   onCancelReply: () => void;
 }
@@ -25,7 +25,7 @@ export default function ChatArea({
   onReplyToMessage,
   onCancelReply,
 }: ChatAreaProps) {
-  const { selectedChat, currentUser, messages, typingUsers } = useChatStore();
+  const { selectedChat, currentUser, messages, typingUsers, deleteMessage } = useChatStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showCodeInput, setShowCodeInput] = useState(false);
 
@@ -212,7 +212,7 @@ export default function ChatArea({
             message={message}
             currentUser={currentUser!}
             otherUser={otherUser}
-            onDeleteMessage={onDeleteMessage}
+            onDeleteMessage={onDeleteMessage || ((messageId) => deleteMessage(messageId, false))}
             onReplyToMessage={onReplyToMessage}
           />
         ))}

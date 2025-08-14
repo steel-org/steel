@@ -1,6 +1,6 @@
 # 📋 Steel - Version Management Guide
 
-## Current Version: v3.3.3
+## Current Version: v3.4.0
 
 Steel Chat follows [Semantic Versioning](https://semver.org/) (SemVer) for version management.
 
@@ -16,7 +16,27 @@ MAJOR.MINOR.PATCH
 
 ## Version History
 
-### v3.3.3 (Current) - Patch Release
+### v3.4.0 (Current) - Minor Release
+
+**Release Date**: 14/08/2025
+**Status**: Production Ready
+**Type**: Minor
+
+**Changes**:
+
+- Version bump to v3.4.0 in all project files and UI components
+- Removed status selection so it's now handled automatically
+- Added settings page with profile editing, logging out and avatar upload
+- Redesigned sidebar with collapsible sections for direct/group chats and online users
+- Added profile editing with form validation and real-time updates to settings
+- Improved chat item display with last message preview and timestamps
+- Fixed TypeScript errors and improved type safety
+- Added online status indicators for users
+- Enhanced UI/UX with better loading states and feedback
+- Improve logout route to handle deleted users gracefully
+- Minor performance improvements and bug fixes
+
+### v3.3.3 (Previous) - Patch Release
 
 **Release Date**: 14/08/2025
 **Status**: Production Ready
@@ -293,7 +313,7 @@ MAJOR.MINOR.PATCH
 
 ## Future Version Planning
 
-### v3.4.0 (Future Minor Release)
+### v3.5.0 (Future Minor Release)
 
 **Target Date**: TBD
 **Type**: Minor Release (New Features)
@@ -329,7 +349,7 @@ MAJOR.MINOR.PATCH
 
 ## Version Update Process
 
-### For Minor Releases (v3.3.0, v3.4.0, etc.)
+### For Minor Releases (v3.5.0, v3.6.0, etc.)
 
 1. **Update package.json versions**
 
@@ -467,13 +487,13 @@ MAJOR.MINOR.PATCH
 
 ### Current Version
 
-- **Backend**: v3.3.3
-- **Frontend**: v3.3.3
+- **Backend**: v3.4.0
+- **Frontend**: v3.4.0
 - **Status**: Production Ready
 
 ### Next Release
 
-- **Target**: v3.4.0
+- **Target**: v3.5.0
 - **Type**: Minor Release
 - **Focus**: Performance and UX improvements
 

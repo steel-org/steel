@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Edit2, Trash2, Reply, MoreHorizontal, Copy, Download } from 'lucide-react';
+import { useChatStore } from '@/stores/chatStore';
 import { Message as MessageType, User } from '../types';
 
 interface MessageProps {
@@ -23,11 +24,20 @@ const MessageComponent: React.FC<MessageProps> = ({
   onReact
 }) => {
   const [showActions, setShowActions] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
+  const { deleteMessage } = useChatStore();
 
   const isOwn = message.sender.id === currentUser.id;
   const isCode = message.type === 'CODE';
+  
+  const handleDelete = async (deleteForEveryone: boolean) => {
+    if (deleteMessage) {
+      await deleteMessage(message.id, deleteForEveryone);
+      setShowDeleteDialog(false);
+    }
+  };
 
   const handleEdit = () => {
     if (onEditMessage && editContent.trim() !== message.content) {
@@ -53,11 +63,12 @@ const MessageComponent: React.FC<MessageProps> = ({
   };
 
   return (
-    <div
-      className={`group flex ${isOwn ? 'justify-end' : 'justify-start'} mb-4 px-2`}
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => setShowActions(false)}
-    >
+    <>
+      <div
+        className={`group flex ${isOwn ? 'justify-end' : 'justify-start'} mb-4 px-2`}
+        onMouseEnter={() => setShowActions(true)}
+        onMouseLeave={() => setShowActions(false)}
+      >
       <div className={`max-w-xs lg:max-w-md ${isOwn ? 'order-1' : 'order-2'}`}>
         {!isOwn && (
           <div className="flex items-center mb-1">
@@ -191,14 +202,48 @@ const MessageComponent: React.FC<MessageProps> = ({
                 </button>
               )}
 
-              {isOwn && (
-                <button
-                  onClick={() => onDeleteMessage(message.id)}
-                  className="p-1.5 rounded-full text-red-400 hover:bg-red-500/30 hover:text-red-300"
-                  title="Delete"
-                >
-                  <Trash2 size={14} />
-                </button>
+              <button
+                onClick={() => setShowDeleteDialog(true)}
+                className={`p-1.5 rounded-full ${isOwn ? 'text-red-200 hover:bg-red-500/30 hover:text-red-100' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+                title="Delete"
+              >
+                <Trash2 size={14} />
+              </button>
+              
+              {/* Delete Confirmation Dialog */}
+              {showDeleteDialog && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl max-w-md w-full">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                      Delete Message
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-300 mb-6">
+                      Are you sure you want to delete this message?
+                    </p>
+                    <div className="flex justify-end space-x-3">
+                      <button
+                        onClick={() => setShowDeleteDialog(false)}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => handleDelete(false)}
+                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                      >
+                        Delete for me
+                      </button>
+                      {isOwn && (
+                        <button
+                          onClick={() => handleDelete(true)}
+                          className="px-4 py-2 text-sm font-medium text-white bg-red-700 rounded-md hover:bg-red-800"
+                        >
+                          Delete for everyone
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -217,8 +262,45 @@ const MessageComponent: React.FC<MessageProps> = ({
             ))}
           </div>
         )}
+        </div>
       </div>
-    </div>
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl max-w-md w-full">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              Delete Message
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              Are you sure you want to delete this message?
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteDialog(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(false)}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+              >
+                Delete for me
+              </button>
+              {isOwn && (
+                <button
+                  onClick={() => handleDelete(true)}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-700 rounded-md hover:bg-red-800"
+                >
+                  Delete for everyone
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
