@@ -255,11 +255,18 @@ export default function ChatLayout() {
   };
 
   const handleStartConversation = async (userId: string) => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      console.error('Cannot start conversation: No current user');
+      return;
+    }
+
+    console.log('Starting new conversation with user:', userId);
 
     // Sort user IDs to ensure consistent chat ID generation
     const [user1, user2] = [currentUser.id, userId].sort();
     const chatId = `chat_${user1}_${user2}`;
+    
+    console.log('Generated chat ID:', chatId);
 
     // Check if chat already exists with this user
     const existingChat = chats.find(chat =>
@@ -326,19 +333,66 @@ export default function ChatLayout() {
   };
 
   const sendMessage = (text: string, type = "text") => {
-    if (text.trim() && selectedChat && currentUser) {
-      const messageData = {
-        chatId: selectedChat.id,
-        content: text,
-        type,
-        ...(replyingTo && {
-          replyToId: replyingTo.id,
-        }),
-      };
-      
-      wsService.sendMessage(messageData);
-      setReplyingTo(null);
+    if (!text.trim()) {
+      console.warn('Attempted to send empty message');
+      return;
     }
+    
+    if (!selectedChat) {
+      console.error('Cannot send message: No chat selected');
+      return;
+    }
+    
+    if (!currentUser) {
+      console.error('Cannot send message: No current user');
+      return;
+    }
+
+    console.log('Sending message:', {
+      chatId: selectedChat.id,
+      type,
+      contentLength: text.length,
+      isReply: !!replyingTo
+    });
+
+    const messageData = {
+      chatId: selectedChat.id,
+      content: text,
+      type,
+      ...(replyingTo && {
+        replyToId: replyingTo.id,
+      }),
+    };
+    
+    wsService.sendMessage(messageData);
+    setReplyingTo(null);
+    
+    // Optimistically add the message to the UI
+    const tempId = `temp-${Date.now()}`;
+    const now = new Date().toISOString();
+    const tempMessage: Message = {
+      id: tempId,
+      chatId: selectedChat.id,
+      content: text,
+      type: type as any, // Temporary cast until we have proper type checking
+      status: 'SENT', // Using SENT as initial status for optimistic update
+      sender: currentUser,
+      createdAt: now,
+      updatedAt: now,
+      attachments: [],
+      reactions: [],
+      ...(replyingTo && { replyTo: replyingTo }),
+    };
+    
+    addMessage(selectedChat.id, tempMessage);
+    
+    // Scroll to bottom after adding the message
+    setTimeout(() => {
+      const messagesContainer = document.querySelector('.messages-container');
+      if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+    }, 100);
   };
 
   const sendCodeSnippet = (code: string, language: string) => {

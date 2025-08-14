@@ -91,10 +91,20 @@ export const useChatStore = create<ChatState>()(
         // Chats
         chats: [],
         selectedChat: null,
-        setChats: (chats) => set({ chats }),
-        addChat: (chat) => set((state) => ({
-          chats: [...state.chats.filter(c => c.id !== chat.id), chat]
-        })),
+        setChats: (chats) => {
+          console.log('Setting chats:', chats.map(c => ({ id: c.id, name: c.name || 'Direct Message' })));
+          return { chats };
+        },
+        addChat: (chat) => set((state) => {
+          console.log('Adding chat:', { 
+            id: chat.id, 
+            name: chat.name || 'Direct Message',
+            members: chat.members?.map(m => m.user?.username || 'Unknown User')
+          });
+          
+          const existingChats = state.chats.filter(c => c.id !== chat.id);
+          return { chats: [...existingChats, chat] };
+        }),
         updateChat: (chatId, updates) => set((state) => ({
           chats: state.chats.map(chat => 
             chat.id === chatId ? { ...chat, ...updates } : chat
@@ -147,12 +157,27 @@ export const useChatStore = create<ChatState>()(
         
         // Messages
         messages: {},
-        addMessage: (chatId, message) => set((state) => ({
-          messages: {
+        addMessage: (chatId, message) => set((state) => {
+          console.log('Adding message to store:', {
+            chatId,
+            messageId: message.id,
+            content: message.content?.substring(0, 50) + '...',
+            sender: message.sender?.username
+          });
+          
+          const chatMessages = state.messages[chatId] || [];
+          const updatedMessages = {
             ...state.messages,
-            [chatId]: [...(state.messages[chatId] || []), message]
-          }
-        })),
+            [chatId]: [...chatMessages, message]
+          };
+          
+          console.log('Updated messages for chat:', {
+            chatId,
+            messageCount: updatedMessages[chatId]?.length || 0
+          });
+          
+          return { messages: updatedMessages };
+        }),
         updateMessage: (chatId, messageId, updates) => set((state) => ({
           messages: {
             ...state.messages,
@@ -215,19 +240,36 @@ export const useChatStore = create<ChatState>()(
         
         // Event handlers
         handleMessageReceived: (event) => {
+          console.log('Handling received message:', {
+            eventType: 'message_received',
+            messageId: event.message?.id,
+            chatId: event.message?.chatId
+          });
+          
           const { message } = event;
           const chatId = message.chatId || 'unknown';
+          
+          // Add message to store
           get().addMessage(chatId, message);
+          
+          // Update last message in chat
+          get().updateChat(chatId, {
+            lastMessage: message.content,
+            updatedAt: new Date().toISOString()
+          });
           
           // Add notification if chat is not selected
           if (get().selectedChat?.id !== chatId) {
+            console.log('Creating notification for new message in unselected chat');
             get().addNotification({
               id: `msg-${message.id}`,
-              title: message.sender.username,
-              body: message.content.substring(0, 100),
-              icon: message.sender.avatar,
+              title: message.sender?.username || 'New message',
+              body: message.content?.substring(0, 100) || '',
+              icon: message.sender?.avatar,
               timestamp: Date.now()
             });
+          } else {
+            console.log('Message received in current chat, no notification needed');
           }
         },
         
