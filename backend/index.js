@@ -2,6 +2,9 @@ const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
 const cors = require("cors");
+const { PrismaClient } = require('@prisma/client');
+
+const prisma = new PrismaClient();
 
 const app = express();
 const server = http.createServer(app);
@@ -27,27 +30,45 @@ io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
 
   // Handle user joining
-  socket.on("join", (userData) => {
-    const { username, avatar } = userData;
+  socket.on("join", async (userData) => {
+    const { username, userId, avatar } = userData;
 
-    connectedUsers.set(socket.id, {
-      id: socket.id,
-      username: username || `User-${socket.id.slice(0, 6)}`,
-      avatar:
-        avatar ||
-        `https://ui-avatars.com/api/?name=${socket.id}&size=128&background=000000&color=ffffff`,
-      joinedAt: new Date(),
-      isOnline: true,
-      lastSeen: new Date(),
-    });
+    try {
+      // Update user status in database
+      if (userId) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            status: 'online',
+            lastSeen: new Date()
+          }
+        });
+      }
 
-    // Send current users list to all clients
-    io.emit("users", Array.from(connectedUsers.values()));
+      const userInfo = {
+        id: userId || socket.id,
+        username: username || `User-${socket.id.slice(0, 6)}`,
+        avatar: avatar || `https://ui-avatars.com/api/?name=${username || socket.id}&size=128&background=000000&color=ffffff`,
+        isOnline: true,
+        lastSeen: new Date(),
+        userId: userId // Store the actual user ID for reference
+      };
 
-    // Notify others about new user
-    socket.broadcast.emit("userJoined", connectedUsers.get(socket.id));
+      connectedUsers.set(socket.id, userInfo);
 
-    console.log(`User ${username} joined the chat`);
+      // Get updated online users list
+      const onlineUsers = Array.from(connectedUsers.values());
+      
+      // Send current users list to all clients
+      io.emit("users", onlineUsers);
+
+      // Notify others about new user
+      socket.broadcast.emit("userJoined", userInfo);
+
+      console.log(`User ${username} (${userId || 'guest'}) joined the chat`);
+    } catch (error) {
+      console.error('Error updating user status:', error);
+    }
   });
 
   // Handle private messages
@@ -172,20 +193,36 @@ io.on("connection", (socket) => {
   });
 
   // Handle user going offline
-  socket.on("disconnect", () => {
+  socket.on("disconnect", async () => {
     const user = connectedUsers.get(socket.id);
     if (user) {
-      user.isOnline = false;
-      user.lastSeen = new Date();
+      try {
+        if (user.userId) {
+          await prisma.user.update({
+            where: { id: user.userId },
+            data: {
+              status: 'offline',
+              lastSeen: new Date()
+            }
+          });
+        }
 
-      // Update users list
-      io.emit("users", Array.from(connectedUsers.values()));
+        user.isOnline = false;
+        user.lastSeen = new Date();
 
-      // Notify others about user going offline
-      socket.broadcast.emit("userLeft", user);
+        const onlineUsers = Array.from(connectedUsers.values())
+          .filter(u => u.id !== socket.id);
 
-      connectedUsers.delete(socket.id);
-      console.log(`User ${user.username} left the chat`);
+        io.emit("users", onlineUsers);
+
+        socket.broadcast.emit("userLeft", user);
+
+        console.log(`User ${user.username} (${user.userId || 'guest'}) left the chat`);
+      } catch (error) {
+        console.error('Error updating user status on disconnect:', error);
+      } finally {
+        connectedUsers.delete(socket.id);
+      }
     }
   });
 });
@@ -203,7 +240,7 @@ app.get("/health", (req, res) => {
 app.get("/info", (req, res) => {
   res.json({
     name: "Steel Private Chat Backend",
-    version: "3.3.0",
+    version: "3.3.1",
     connectedUsers: connectedUsers.size,
     uptime: process.uptime(),
   });
@@ -215,5 +252,5 @@ server.listen(PORT, () => {
   console.log(`🚀 Steel Private Chat Backend running on port ${PORT}`);
   console.log(`📡 Socket.io server ready for connections`);
   console.log(`🌐 Health check: http://localhost:${PORT}/health`);
-  console.log(`This is Version 3.3.0`);
+  console.log(`This is Version 3.3.1`);
 });

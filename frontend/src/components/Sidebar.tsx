@@ -295,8 +295,10 @@ export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
                 <UserIcon size={48} className="mb-4" />
                 <p className="text-lg font-medium mb-2">No online users</p>
                 <p className="text-sm text-center text-gray-500">
-                  Your friends arent online?, tell them to come onboard 
-                  You'll see them here!.
+                  Your friends arent online?, tell them to come onboard
+                </p>
+                <p className="text-sm text-center text-gray-500">
+                  You'll see them here!
                 </p>
               </div>
             ) : (

@@ -1,4 +1,4 @@
-# 🚀 Steel v3.3.0 - Production Deployment Guide
+# 🚀 Steel v3.3.1 - Production Deployment Guide
 
 ## Table of Contents
 
@@ -15,7 +15,7 @@
 
 ## Overview
 
-This guide provides step-by-step instructions for deploying Steel v3.3.0 to production environments. This version represents a major milestone with production-ready features including real-time messaging, code sharing, file uploads, and comprehensive deployment guides.
+This guide provides step-by-step instructions for deploying Steel v3.3.1 to production environments. This version represents a major milestone with production-ready features including real-time messaging, code sharing, file uploads, and comprehensive deployment guides.
 
 The application consists of:
 

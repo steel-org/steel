@@ -95,7 +95,7 @@ router.get("/:id", auth, async (req: Request, res: Response) => {
 router.put("/profile", auth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
-    const { username, avatar } = req.body;
+    const { username, displayName, status, avatar, bio } = req.body;
 
     // Check if username is already taken
     if (username) {
@@ -114,20 +114,35 @@ router.put("/profile", auth, async (req: Request, res: Response) => {
       }
     }
 
+    // Validate status
+    const validStatuses = ['online', 'offline', 'away', 'busy'];
+    if (status && !validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid status value",
+      });
+    }
+
     const user = await prisma.user.update({
       where: { id: userId },
       data: {
         username,
+        displayName,
+        status,
         avatar,
+        bio,
       },
       select: {
         id: true,
         username: true,
         email: true,
+        displayName: true,
         avatar: true,
         status: true,
+        bio: true,
         lastSeen: true,
         createdAt: true,
+        updatedAt: true,
       },
     });
 
@@ -136,9 +151,10 @@ router.put("/profile", auth, async (req: Request, res: Response) => {
       data: user,
     });
   } catch (error) {
+    console.error('Profile update error:', error);
     return res.status(500).json({
       success: false,
-      error: "Server error",
+      error: error instanceof Error ? error.message : "Failed to update profile",
     });
   }
 });
