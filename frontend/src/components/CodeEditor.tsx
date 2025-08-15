@@ -1,8 +1,8 @@
-import React, { useState, useRef, useCallback, ChangeEvent } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Editor } from '@monaco-editor/react';
-import { Copy, Send, X, Upload, FileText, Save } from 'lucide-react';
+import { Copy, Send, X, Upload, Save } from 'lucide-react';
 
-interface CodeInputProps {
+interface CodeEditorProps {
   onSendCode: (code: string, language: string, filename?: string) => void;
   onClose: () => void;
   initialCode?: string;
@@ -38,7 +38,35 @@ const languageExtensions: { [key: string]: string } = {
   'makefile': 'Makefile'
 };
 
-const CodeInput: React.FC<CodeInputProps> = ({
+const languages = [
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'typescript', label: 'TypeScript' },
+  { value: 'python', label: 'Python' },
+  { value: 'java', label: 'Java' },
+  { value: 'cpp', label: 'C++' },
+  { value: 'c', label: 'C' },
+  { value: 'csharp', label: 'C#' },
+  { value: 'go', label: 'Go' },
+  { value: 'rust', label: 'Rust' },
+  { value: 'ruby', label: 'Ruby' },
+  { value: 'php', label: 'PHP' },
+  { value: 'swift', label: 'Swift' },
+  { value: 'kotlin', label: 'Kotlin' },
+  { value: 'html', label: 'HTML' },
+  { value: 'css', label: 'CSS' },
+  { value: 'scss', label: 'SCSS' },
+  { value: 'json', label: 'JSON' },
+  { value: 'markdown', label: 'Markdown' },
+  { value: 'yaml', label: 'YAML' },
+  { value: 'xml', label: 'XML' },
+  { value: 'sql', label: 'SQL' },
+  { value: 'bash', label: 'Bash' },
+  { value: 'powershell', label: 'PowerShell' },
+  { value: 'dockerfile', label: 'Dockerfile' },
+  { value: 'makefile', label: 'Makefile' },
+];
+
+const CodeEditor: React.FC<CodeEditorProps> = ({
   onSendCode,
   onClose,
   initialCode = '',
@@ -48,43 +76,21 @@ const CodeInput: React.FC<CodeInputProps> = ({
   const [code, setCode] = useState(initialCode);
   const [language, setLanguage] = useState(initialLanguage);
   const [filename, setFilename] = useState(initialFilename);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isEditorReady, setIsEditorReady] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<any>(null);
 
-  const languages = [
-    { value: 'javascript', label: 'JavaScript' },
-    { value: 'typescript', label: 'TypeScript' },
-    { value: 'python', label: 'Python' },
-    { value: 'java', label: 'Java' },
-    { value: 'cpp', label: 'C++' },
-    { value: 'c', label: 'C' },
-    { value: 'csharp', label: 'C#' },
-    { value: 'go', label: 'Go' },
-    { value: 'rust', label: 'Rust' },
-    { value: 'ruby', label: 'Ruby' },
-    { value: 'php', label: 'PHP' },
-    { value: 'swift', label: 'Swift' },
-    { value: 'kotlin', label: 'Kotlin' },
-    { value: 'html', label: 'HTML' },
-    { value: 'css', label: 'CSS' },
-    { value: 'scss', label: 'SCSS' },
-    { value: 'json', label: 'JSON' },
-    { value: 'markdown', label: 'Markdown' },
-    { value: 'yaml', label: 'YAML' },
-    { value: 'xml', label: 'XML' },
-    { value: 'sql', label: 'SQL' },
-    { value: 'bash', label: 'Bash' },
-    { value: 'powershell', label: 'PowerShell' },
-    { value: 'dockerfile', label: 'Dockerfile' },
-    { value: 'makefile', label: 'Makefile' },
-  ];
+  // Handle editor mount
+  const handleEditorDidMount = (editor: any) => {
+    editorRef.current = editor;
+    setIsEditorReady(true);
+  };
 
-  const handleFileUpload = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+  // Handle file upload
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Detect language from file extension
     const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
     const detectedLanguage = Object.entries(languageExtensions).find(
       ([_, ext]) => ext.toLowerCase() === fileExtension
@@ -100,8 +106,9 @@ const CodeInput: React.FC<CodeInputProps> = ({
       }
     };
     reader.readAsText(file);
-  }, [filename]);
+  };
 
+  // Handle send
   const handleSend = () => {
     if (code.trim()) {
       onSendCode(code, language, filename || undefined);
@@ -109,6 +116,7 @@ const CodeInput: React.FC<CodeInputProps> = ({
     }
   };
 
+  // Handle copy to clipboard
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(code);
@@ -117,6 +125,7 @@ const CodeInput: React.FC<CodeInputProps> = ({
     }
   };
 
+  // Handle download
   const handleDownload = () => {
     const extension = languageExtensions[language] || 'txt';
     const blob = new Blob([code], { type: 'text/plain' });
@@ -129,15 +138,6 @@ const CodeInput: React.FC<CodeInputProps> = ({
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-
-  const handleEditorDidMount = (editor: any) => {
-    editorRef.current = editor;
-    setIsLoading(false);
-  };
-
-  if (isLoading) {
-    return <div>Loading editor...</div>;
-  }
 
   return (
     <div className="relative bg-gray-800 rounded-lg overflow-hidden border border-gray-700 flex flex-col h-full">
@@ -224,6 +224,11 @@ const CodeInput: React.FC<CodeInputProps> = ({
           value={code}
           onChange={(value) => setCode(value || '')}
           onMount={handleEditorDidMount}
+          loading={
+            <div className="flex items-center justify-center h-full bg-gray-900 text-gray-400">
+              Loading editor...
+            </div>
+          }
           options={{
             minimap: { enabled: true },
             scrollBeyondLastLine: false,
@@ -247,7 +252,7 @@ const CodeInput: React.FC<CodeInputProps> = ({
         <button
           onClick={handleSend}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded flex items-center space-x-1 text-sm font-medium"
-          disabled={!code.trim()}
+          disabled={!code.trim() || !isEditorReady}
         >
           <Send size={16} className="mr-1" />
           Send Code
@@ -257,4 +262,4 @@ const CodeInput: React.FC<CodeInputProps> = ({
   );
 };
 
-export default CodeInput;
+export default CodeEditor;

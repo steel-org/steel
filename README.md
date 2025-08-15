@@ -1,4 +1,4 @@
-# Steel - Modern Desktop Messaging for Developers
+# Biuld - Modern Desktop Messaging for Developers
 
 **Code. Chat. Control.**
 
@@ -38,35 +38,34 @@ A production-ready desktop chat application built for developers, featuring real
 - **Backend**: Node.js + Express + TypeScript
 - **Real-time**: Socket.IO with WebSocket
 - **Database**: PostgreSQL with Prisma ORM
-- **File Storage**: S3-compatible storage (MinIO/AWS)
+- **File Storage**: Supabase Storage
 - **Desktop**: Electron for cross-platform packaging
 - **Code Editor**: Monaco Editor (VSCode-like experience)
 
 ### Project Structure
 
 ```
-steel/
+biuld/
 ├── backend/                 # Node.js + Express API
 │   ├── src/
-│   │   ├── controllers/    # API route handlers
-│   │   ├── models/         # Database models
-│   │   ├── services/       # Business logic
+│   │   ├── routes/    # API route handlers
+│   │   ├── utils/       # Business logic
 │   │   ├── middleware/     # Auth, validation, etc.
 │   │   └── websocket/      # Socket.IO event handlers
-│   ├── prisma/             # Database schema and migrations
-│   └── tests/              # Backend tests
+│   ├── prisma/  # Database schema and migrations
+│   ├── tests/              # Backend tests
 ├── frontend/               # React + TypeScript app
+│   ├── pages/              # Next.js pages
 │   ├── src/
 │   │   ├── components/     # React components
-│   │   ├── hooks/          # Custom React hooks
+│   │   ├── types/          # TypeScript interfaces
 │   │   ├── services/       # API and WebSocket services
 │   │   ├── stores/         # State management
+│   │   ├── styles/         # CSS styles
 │   │   └── utils/          # Utility functions
 │   └── public/             # Static assets
-├── desktop/                # Electron app wrapper
-│   └── src/                # Electron main process
-└── shared/                 # Shared types and utilities
-    └── types/              # TypeScript interfaces
+└── desktop/                # Electron app wrapper 
+    └── src/                # Electron main process
 ```
 
 ## 🛠️ Setup Instructions
@@ -76,7 +75,7 @@ steel/
 - Node.js 18+
 - PostgreSQL 13+
 - Redis (optional, for session storage)
-- MinIO or AWS S3 for file storage
+- Supabase for file storage
 
 ### Environment Variables
 
@@ -86,15 +85,8 @@ Create `.env` files in both `backend/` and `frontend/` directories:
 
 ```env
 # Database
-DATABASE_URL="postgresql://user:password@localhost:5432/steel_chat"
+DATABASE_URL="postgresql://user:password@localhost:5432/biuld_chat"
 REDIS_URL="redis://localhost:6379"
-
-# File Storage
-S3_ENDPOINT="http://localhost:9000"
-S3_ACCESS_KEY="your-access-key"
-S3_SECRET_KEY="your-secret-key"
-S3_BUCKET="steel-chat-files"
-S3_REGION="us-east-1"
 
 # JWT
 JWT_SECRET="your-super-secret-jwt-key"
@@ -116,6 +108,10 @@ ALLOWED_FILE_TYPES="image/*,application/zip,text/*,.ste,.py,.c,.cpp,.json"
 NEXT_PUBLIC_API_URL="http://localhost:5000"
 NEXT_PUBLIC_WS_URL="ws://localhost:5000"
 NEXT_PUBLIC_APP_NAME="Steel"
+
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 ### Installation

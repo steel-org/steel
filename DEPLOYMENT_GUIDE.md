@@ -1,4 +1,4 @@
-# 🚀 Steel v3.4.0 - Production Deployment Guide
+# 🚀 Biuld v4.0.0 - Production Deployment Guide
 
 ## Table of Contents
 
@@ -15,21 +15,21 @@
 
 ## Overview
 
-This guide provides step-by-step instructions for deploying Steel v3.4.0 to production environments. This version represents a major milestone with production-ready features including real-time messaging, code sharing, file uploads, and comprehensive deployment guides.
+This guide provides step-by-step instructions for deploying Biuld v4.0.0 to production environments. This version represents a major milestone with production-ready features including real-time messaging, code sharing, file uploads, and comprehensive deployment guides.
 
 The application consists of:
 
 - **Backend**: Node.js/Express API with PostgreSQL database
 - **Frontend**: Next.js React application
 - **Real-time Communication**: WebSocket support via Socket.IO
-- **File Storage**: S3-compatible storage for file uploads
+- **File Storage**: Supabase-compatible storage for file uploads
 - **Code Editor**: Monaco Editor integration for code sharing
 
 ## Prerequisites
 
 Before deployment, ensure you have:
 
-- [ ] GitHub repository with Steel Chat codebase
+- [ ] GitHub repository with Biuld codebase
 - [ ] Node.js 18+ installed locally (for testing)
 - [ ] Git configured with your credentials
 - [ ] Access to deployment platforms (Railway, Vercel)
@@ -58,7 +58,7 @@ Railway is the recommended backend hosting platform due to its:
 #### 2. Project Configuration
 
 1. Select "Deploy from GitHub repo"
-2. Choose your `steel` repository
+2. Choose `biuld` repository
 3. Click "Deploy Now"
 4. In the project dashboard, navigate to "Settings"
 5. Set "Root Directory" to `backend`
@@ -76,6 +76,9 @@ Railway is the recommended backend hosting platform due to its:
 1. Click "New" → "Database" → "Add Redis"
 2. Railway provisions a Redis instance
 3. The `REDIS_URL` environment variable is automatically added
+
+### Note: we will now be using supabase as the postgres
+check the [SUPABASE_SETUP.md](SUPABASE_SETUP.md) for more details
 
 #### 5. Security Configuration
 
@@ -150,11 +153,8 @@ Choose one of the following options:
 **Option B: AWS S3**
 
 ```env
-S3_ENDPOINT="https://s3.amazonaws.com"
-S3_ACCESS_KEY="your-aws-access-key"
-S3_SECRET_KEY="your-aws-secret-key"
-S3_BUCKET="your-bucket-name"
-S3_REGION="us-east-1"
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 **Option C: MinIO (Free S3 Alternative)**
@@ -167,11 +167,8 @@ S3_REGION="us-east-1"
 **Option D: Disable File Uploads**
 
 ```env
-S3_ENDPOINT=""
-S3_ACCESS_KEY=""
-S3_SECRET_KEY=""
-S3_BUCKET=""
-S3_REGION=""
+NEXT_PUBLIC_SUPABASE_URL=""
+NEXT_PUBLIC_SUPABASE_ANON_KEY=""
 ```
 
 #### 8. Deployment
@@ -221,6 +218,10 @@ NEXT_PUBLIC_API_URL="https://your-backend-url.railway.app"
 NEXT_PUBLIC_WS_URL="wss://your-backend-url.railway.app"
 NEXT_PUBLIC_APP_NAME="Steel"
 
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
 # Feature Flags
 NEXT_PUBLIC_ENABLE_CODE_SHARING=true
 NEXT_PUBLIC_ENABLE_FILE_UPLOAD=true
@@ -255,6 +256,8 @@ NEXT_PUBLIC_ENABLE_NOTIFICATIONS=true
 | ---------------------- | -------------------- | -------- | -------------------------- |
 | `NEXT_PUBLIC_API_URL`  | Backend API endpoint | Yes      | Your Railway URL           |
 | `NEXT_PUBLIC_WS_URL`   | WebSocket endpoint   | Yes      | Your Railway WebSocket URL |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase URL | Yes | Your Supabase URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Anon Key | Yes | Your Supabase Anon Key |
 | `NEXT_PUBLIC_APP_NAME` | Application name     | No       | `Steel Chat`               |
 
 ## Database Setup

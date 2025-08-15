@@ -240,17 +240,14 @@ export default function ChatLayout() {
   };
 
   const handleUsers = (users: any[]) => {
-    // Update users list in the store
     const formattedUsers = users.map(user => ({
       ...user,
-      // Ensure lastSeen is a string
       lastSeen: user.lastSeen ? new Date(user.lastSeen).toISOString() : new Date().toISOString(),
     }));
     setUsers(formattedUsers);
   };
 
   const handleUserJoined = (userData: any) => {
-    // Add or update user in the store with online status
     addUser({
       ...userData,
       status: 'online',
@@ -259,7 +256,6 @@ export default function ChatLayout() {
   };
 
   const handleUserLeft = (userData: any) => {
-    // Update user status to offline with current timestamp
     updateUser(userData.id, { 
       status: 'offline',
       lastSeen: new Date().toISOString() 
@@ -276,7 +272,7 @@ export default function ChatLayout() {
 
   const loadMessagesFromStorage = (chatId: string): Message[] => {
     try {
-      const stored = localStorage.getItem(`steel_messages_${chatId}`);
+      const stored = localStorage.getItem(`biuld_messages_${chatId}`);
       return stored ? JSON.parse(stored) : [];
     } catch (error) {
       console.error("Error loading messages from localStorage:", error);
@@ -287,7 +283,7 @@ export default function ChatLayout() {
   const saveMessagesToStorage = (chatId: string, messages: Message[]) => {
     try {
       localStorage.setItem(
-        `steel_messages_${chatId}`,
+        `biuld_messages_${chatId}`,
         JSON.stringify(messages)
       );
     } catch (error) {
@@ -298,36 +294,26 @@ export default function ChatLayout() {
   const handleAuthSuccess = async (user: User) => {
     setCurrentUser(user);
     setShowAuthModal(false);
-
-    // Connect to WebSocket after successful authentication
     await connectWebSocket();
   };
 
   const handleLogout = async (fromSettings = false) => {
     try {
-      // Clear WebSocket connections first
       wsService.disconnect();
       
-      // Clear the auth token
       apiService.clearToken();
       
-      // Clear the chat store
       useChatStore.getState().logout();
       
-      // Clear local storage
-      localStorage.removeItem('steel-chat-store');
+      localStorage.removeItem('biuld-chat-store');
       
-      // Clear cookies
       document.cookie = 'token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
       
-      // If called from settings, don't force reload as it will be handled by the settings component
       if (!fromSettings) {
-        // Force a full page reload to reset all state
         window.location.href = '/';
       }
     } catch (error) {
       console.error('Error during logout:', error);
-      // Still redirect even if there was an error
       if (!fromSettings) {
         window.location.href = '/';
       }
@@ -342,74 +328,37 @@ export default function ChatLayout() {
 
     console.log('Starting new conversation with user:', userId);
 
-    // Sort user IDs to ensure consistent chat ID generation
-    const [user1, user2] = [currentUser.id, userId].sort();
-    const chatId = `chat_${user1}_${user2}`;
-    
-    console.log('Generated chat ID:', chatId);
-
-    // Check if chat already exists with this user
-    const existingChat = chats.find(chat =>
-      !chat.isGroup &&
-      chat.participants?.includes(userId) &&
-      chat.participants?.includes(currentUser.id)
-    );
-
-    if (existingChat) {
-      setSelectedChat(existingChat);
-      return;
+    try {
+      const existingChat = chats.find(chat => 
+        !chat.isGroup && 
+        chat.participants?.includes(userId) && 
+        chat.participants?.includes(currentUser.id)
+      );
+  
+      if (existingChat) {
+        console.log('Found existing chat:', existingChat.id);
+        setSelectedChat(existingChat);
+        return;
+      }
+      
+      console.log('Creating new chat with user:', userId);
+      const newChat = await apiService.createChat({
+        type: 'DIRECT',
+        memberIds: [userId],
+      });
+      
+      console.log('Server created chat:', newChat);
+      
+      addChat(newChat);
+      setSelectedChat(newChat);
+      setReplyingTo(null);
+      
+      setMessages(newChat.id, []);
+      
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      alert('Failed to create chat. Please try again or contact support.');
     }
-
-    // Find user 
-    const existingUser = users.find(u => u.id === userId);
-    const user: User = existingUser || {
-      id: userId,
-      username: `user_${userId.slice(0, 6)}`,
-      displayName: `User ${userId.slice(0, 6)}`,
-      lastSeen: new Date().toISOString(),
-      email: `${userId}@placeholder.com`,
-      avatar: `https://ui-avatars.com/api/?name=User+${encodeURIComponent(userId.slice(0, 6))}&background=random`,
-      createdAt: new Date().toISOString(),
-      status: 'offline' 
-    };
-    
-    const chat: Chat = {
-      id: chatId,
-      type: 'DIRECT',
-      members: [
-        {
-          id: `${chatId}_${currentUser.id}`,
-          role: 'MEMBER',
-          joinedAt: new Date().toISOString(),
-          user: currentUser
-        },
-        {
-          id: `${chatId}_${userId}`,
-          role: 'MEMBER',
-          joinedAt: new Date().toISOString(),
-          user: user
-        }
-      ],
-      participants: [currentUser.id, userId],
-      lastMessage: undefined,
-      unreadCount: 0,
-      isGroup: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    
-    // Add to chats list if not exists
-    const chatExists = chats.some(c => c.id === chatId);
-    if (!chatExists) {
-      addChat(chat);
-    }
-
-    setSelectedChat(chat);
-    setReplyingTo(null);
-
-    // Load existing messages from localStorage
-    const existingMessages = loadMessagesFromStorage(chatId);
-    setMessages(chatId, existingMessages);
   };
 
   const sendMessage = (text: string, type = "text") => {
@@ -517,7 +466,7 @@ export default function ChatLayout() {
       <div className="flex items-center justify-center min-h-screen bg-gray-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading Steel Chat...</p>
+          <p className="text-gray-400">Loading Biuld...</p>
         </div>
       </div>
     );
@@ -548,7 +497,7 @@ export default function ChatLayout() {
 
       {isConnecting && (
         <div className="fixed top-4 right-4 bg-yellow-600 text-white px-4 py-2 rounded-md shadow-lg">
-          Connecting to steel...
+          Connecting to Biuld...
         </div>
       )}
     </div>

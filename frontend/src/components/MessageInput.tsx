@@ -1,10 +1,11 @@
-
-import React, { useState, useRef } from 'react';
-import { Send, Paperclip, Code, Smile } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Send, Paperclip, Smile, Code } from 'lucide-react';
+import FileUpload from './FileUpload';
+import { FileUploadResult } from '@/services/supabase';
 
 interface MessageInputProps {
-  onSendMessage: (content: string, type?: 'text' | 'code') => void;
-  onFileUpload: (file: File) => void;
+  onSendMessage: (content: string, type?: 'text' | 'code' | 'file', attachment?: any) => void;
+  onFileUpload?: (file: File) => void;
   onTyping?: (isTyping: boolean) => void;
   disabled?: boolean;
   placeholder?: string;
@@ -20,6 +21,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [message, setMessage] = useState('');
   const [isCodeMode, setIsCodeMode] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [showFileUpload, setShowFileUpload] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Track typing state with debounce
@@ -64,13 +66,23 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (file && onFileUpload) {
       onFileUpload(file);
     }
   };
 
+  const handleFileUploaded = (fileData: FileUploadResult) => {
+    onSendMessage(fileData.url, 'file', {
+      url: fileData.url,
+      path: fileData.path,
+      size: fileData.size,
+      type: fileData.type,
+      name: fileData.path.split('/').pop()
+    });
+  };
+
   const triggerFileUpload = () => {
-    fileInputRef.current?.click();
+    setShowFileUpload(true);
   };
 
   return (
@@ -177,6 +189,13 @@ const MessageInput: React.FC<MessageInputProps> = ({
           accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
         />
       </form>
+      
+      {showFileUpload && (
+        <FileUpload
+          onFileUploaded={handleFileUploaded}
+          onClose={() => setShowFileUpload(false)}
+        />
+      )}
     </div>
   );
 };

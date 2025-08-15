@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { LogOut, Users as UsersIcon, Settings as SettingsIcon, X, User as UserIcon } from 'lucide-react';
 import { useChatStore } from '@/stores/chatStore';
+import { apiService } from '@/services/api';
 import GroupChatModal from './GroupChatModal';
 import ProfileModal from './ProfileModal';
 
@@ -9,10 +10,27 @@ interface SettingsProps {
 }
 
 export default function Settings({ onLogout }: SettingsProps) {
-  const { currentUser, users } = useChatStore();
+  const { currentUser, users, addChat, setSelectedChat } = useChatStore();
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const handleCreateGroup = async (name: string, userIds: string[]) => {
+    try {
+      const newChat = await apiService.createChat({
+        name,
+        type: 'GROUP',
+        memberIds: userIds,
+      });
+      
+      addChat(newChat);
+      setSelectedChat(newChat);
+      setIsGroupModalOpen(false);
+    } catch (error) {
+      console.error('Error creating group chat:', error);
+      alert('Failed to create group chat. Please try again or contact support.');
+    }
+  };
 
   if (!isSettingsOpen) {
     return (
@@ -117,7 +135,7 @@ export default function Settings({ onLogout }: SettingsProps) {
           onClose={() => setIsGroupModalOpen(false)}
           users={users}
           currentUser={currentUser}
-          onCreate={() => setIsGroupModalOpen(false)}
+          onCreate={handleCreateGroup}
         />
       )}
     </div>

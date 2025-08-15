@@ -4,7 +4,7 @@ import { useChatStore } from "@/stores/chatStore";
 import { Message } from "@/types";
 import MessageComponent from "./Message";
 import MessageInput from "./MessageInput";
-import CodeInput from "./CodeInput";
+import CodeEditor from "./CodeEditor";
 
 interface ChatAreaProps {
   replyingTo: Message | null;
@@ -114,7 +114,7 @@ export default function ChatArea({
     }
   };
 
-  const handleSendCode = (code: string, language: string) => {
+  const handleSendCode = (code: string, language: string, filename?: string) => {
     if (code.trim()) {
       onSendCodeSnippet(code, language);
       setShowCodeInput(false);
@@ -258,9 +258,10 @@ export default function ChatArea({
       {/* Input Area */}
       <div className="bg-gray-800 border-t border-gray-700 p-4">
         {showCodeInput ? (
-          <CodeInput
+          <CodeEditor
             onSendCode={handleSendCode}
             onClose={() => setShowCodeInput(false)}
+            initialCode=""
           />
         ) : (
           <div className="flex items-center space-x-2">

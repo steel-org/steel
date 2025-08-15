@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, UserPlus, MessageSquare, Users, MessageSquarePlus, User as UserIcon, Circle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, UserPlus, MessageSquare, Users, User as UserIcon, Circle, ChevronDown, ChevronRight } from 'lucide-react';
 import { useChatStore } from '@/stores/chatStore';
 import { User, Chat } from '@/types';
 import Settings from './Settings';
@@ -189,13 +189,6 @@ export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
             <p className="text-sm text-gray-400">Private messaging</p>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={() => onUserSelect('')}
-              className="p-2 rounded-full hover:bg-gray-700"
-              title="New Chat"
-            >
-              <MessageSquarePlus size={20} />
-            </button>
             <button
               onClick={() => setIsUserModalOpen(true)}
               className="p-2 rounded-full hover:bg-gray-700"

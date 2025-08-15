@@ -90,8 +90,7 @@ jspm_packages/
 .tern-port
 
 # Stores VSCode versions used for testing VSCode extensions
-.vscode-test 
-frontend/vercel.json
+.vscode-test
 
 # Next.js TypeScript type definitions
 next-env.d.ts

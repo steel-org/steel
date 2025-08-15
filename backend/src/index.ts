@@ -44,7 +44,7 @@ app.use(limiter);
 app.use(cors({
   origin: (origin, callback) => {
     console.log('Request origin:', origin);
-    const allowedOrigins = ['http://localhost:3000', 'https://steel-z6c6.vercel.app'];
+    const allowedOrigins = ['http://localhost:3000', 'https://biuld.vercel.app'];
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -58,9 +58,6 @@ app.use(cors({
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Serve uploaded files
-app.use("/api/files", express.static(path.join(process.cwd(), "uploads")));
-
 // Setup routes
 setupRoutes(app);
 
@@ -72,7 +69,7 @@ app.get("/api/health", (req, res) => {
   res.json({
     success: true,
     message: "Server is running",
-    version: "3.4.0",
+    version: "4.0.0",
     timestamp: new Date().toISOString(),
   });
 });
@@ -83,7 +80,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 server.listen(Number(PORT), "0.0.0.0", () => {
-  logger.info(`🚀 Steel Backend v3.4.0 running on port ${PORT}`);
+  logger.info(`🚀 Biuld Backend v4.0.0 running on port ${PORT}`);
   logger.info(`📡 Socket.io server ready for connections`);
   logger.info(`🌐 Health check: http://localhost:${PORT}/api/health`);
   logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);

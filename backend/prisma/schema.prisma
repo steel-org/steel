@@ -110,7 +110,7 @@ model Attachment {
   size           Int
   url            String
   thumbnail      String?
-  storageProvider String?  @default("s3")  
+  storageProvider String?  @default("supabase")  
   storageBucket  String?   
   storageKey     String?   
   createdAt      DateTime  @default(now())

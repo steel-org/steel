@@ -12,7 +12,7 @@ const io = socketIo(server, {
   cors: {
     origin:
       process.env.NODE_ENV === "production"
-        ? ["https://steel-z6c6.vercel.app"]
+        ? ["https://biuld.vercel.app"]
         : ["http://localhost:3000"],
     methods: ["GET", "POST"],
   },
@@ -34,7 +34,6 @@ io.on("connection", (socket) => {
     const { username, userId, avatar } = userData;
 
     try {
-      // Update user status in database
       if (userId) {
         await prisma.user.update({
           where: { id: userId },
@@ -239,8 +238,8 @@ app.get("/health", (req, res) => {
 // Get server info
 app.get("/info", (req, res) => {
   res.json({
-    name: "Steel Private Chat Backend",
-    version: "3.4.0",
+    name: "Biuld Private Chat Backend",
+    version: "4.0.0",
     connectedUsers: connectedUsers.size,
     uptime: process.uptime(),
   });
@@ -249,8 +248,8 @@ app.get("/info", (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
-  console.log(`🚀 Steel Private Chat Backend running on port ${PORT}`);
+  console.log(`🚀 Biuld Private Chat Backend running on port ${PORT}`);
   console.log(`📡 Socket.io server ready for connections`);
   console.log(`🌐 Health check: http://localhost:${PORT}/health`);
-  console.log(`This is Version 3.4.0`);
+  console.log(`This is Version 4.0.0`);
 });

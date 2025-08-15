@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Mail, Calendar, MapPin, Link as LinkIcon, Edit2, Save, X as XIcon, User as UserIcon, Globe, MapPin as MapPinIcon, PenTool } from 'lucide-react';
 import { User } from '@/types';
 import { useChatStore } from '@/stores/chatStore';
+import AvatarUpload from './AvatarUpload';
 
 const formatLastSeen = (lastSeen: string | Date): string => {
   const lastSeenDate = new Date(lastSeen);
@@ -75,11 +76,16 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
   };
 
   const formatJoinDate = (date: string | Date) => {
+    if (!date) return 'Unknown';
+    
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) return 'Invalid Date';
+    
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-    }).format(new Date(date));
+    }).format(dateObj);
   };
 
   return (
@@ -115,24 +121,28 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
           {/* Avatar and Basic Info */}
           <div className="flex flex-col items-center mb-6">
             <div className="relative group">
-              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden mb-4">
-                {editedUser.avatar ? (
-                  <img
-                    src={editedUser.avatar}
-                    alt={editedUser.displayName || editedUser.username}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-blue-500 text-white flex items-center justify-center text-2xl font-bold">
-                    {(editedUser.displayName || editedUser.username).charAt(0).toUpperCase()}
-                  </div>
-                )}
-                {isEditing && isCurrentUser && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                    <PenTool className="text-white" size={20} />
-                  </div>
-                )}
-              </div>
+              {isEditing && isCurrentUser ? (
+                <AvatarUpload
+                  currentAvatar={editedUser.avatar}
+                  onAvatarUpdated={(avatarUrl: string) => {
+                    setEditedUser(prev => ({ ...prev, avatar: avatarUrl }));
+                  }}
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden mb-4">
+                  {editedUser.avatar ? (
+                    <img
+                      src={editedUser.avatar}
+                      alt={editedUser.displayName || editedUser.username}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-blue-500 text-white flex items-center justify-center text-2xl font-bold">
+                      {(editedUser.displayName || editedUser.username).charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {isEditing ? (
@@ -286,7 +296,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
             ) : null}
           </div>
 
-          {/* Roles/Badges - Only show when not editing */}
+          {/* Roles/Badges */}
           {!isEditing && editedUser.roles && editedUser.roles.length > 0 && (
             <div className="mt-6">
               <h4 className="text-sm font-semibold text-gray-900 mb-2">
@@ -305,7 +315,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
             </div>
           )}
 
-          {/* Statistics - Only show when not editing */}
+          {/* Statistics */}
           {!isEditing && (
             <div className="mt-6 grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
               <div className="text-center">
@@ -324,7 +334,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
           )}
         </div>
 
-        {/* Footer - Only show when not editing */}
+        {/* Footer */}
         {!isEditing && isCurrentUser && (
           <div className="px-6 py-4 bg-gray-50 rounded-b-lg border-t border-gray-200">
             <div className="flex justify-center">
@@ -335,6 +345,15 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                 <Edit2 size={16} />
                 <span>Edit Profile</span>
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Footer for other users - view only */}
+        {!isCurrentUser && (
+          <div className="px-6 py-4 bg-gray-50 rounded-b-lg border-t border-gray-200">
+            <div className="flex justify-center">
+              <p className="text-sm text-gray-500">Profile is view-only</p>
             </div>
           </div>
         )}
