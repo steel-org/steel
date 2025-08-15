@@ -18,8 +18,8 @@ export const setupRoutes = (app: Express) => {
   // API documentation
   app.get("/api/docs", (req: Request, res: Response) => {
     res.json({
-      name: "Steel Chat API",
-      version: "3.4.0",
+      name: "Biuld API",
+      version: "4.0.0",
       endpoints: {
         auth: {
           "POST /api/auth/register": "Register new user",

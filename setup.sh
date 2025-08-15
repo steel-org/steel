@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Steel v3.4.0 - Local Development Setup Script
+# Steel v4.0.0 - Local Development Setup Script
 # This script automates the setup process for Steel development environment
 # 
 # What this script does:
@@ -15,7 +15,7 @@
 
 set -e
 
-echo "🚀 Steel Setup Script"
+echo "🚀 Biuld Setup Script"
 echo "=========================="
 
 # Colors for output
@@ -175,6 +175,7 @@ main() {
     echo ""
     echo "For production deployment, see DEPLOYMENT_GUIDE.md"
     echo "For version management, see VERSIONING.md"
+    echo "For supabase deployment, see SUPABASE_GUIDE.md"
     echo ""
     echo "For detailed instructions, see README.md and DEPLOYMENT_GUIDE.md"
 }

@@ -71,7 +71,7 @@ export default function AuthModal({
             </svg>
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">
-            {isLogin ? "Welcome to Steel Chat" : "Join Steel Chat"}
+            {isLogin ? "Welcome to Biuld" : "Join Biuld"}
           </h2>
           <p className="text-gray-400">
             {isLogin ? "Sign in to continue" : "Create your account"}
@@ -171,7 +171,7 @@ export default function AuthModal({
 
         <div className="mt-6 pt-6 border-t border-gray-700">
           <div className="text-xs text-gray-400 text-center">
-            <p>Steel v3.4.0 • Real-time developer collaboration</p>
+            <p>Biuld v4.0.0 • Real-time developer collaboration</p>
             <p className="mt-1">
               Share code, ideas, and collaborate seamlessly
             </p>

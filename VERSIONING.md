@@ -1,8 +1,8 @@
-# 📋 Steel - Version Management Guide
+# 📋 Biuld - Version Management Guide
 
-## Current Version: v3.4.0
+## Current Version: v4.0.0
 
-Steel Chat follows [Semantic Versioning](https://semver.org/) (SemVer) for version management.
+Biuld Chat follows [Semantic Versioning](https://semver.org/) (SemVer) for version management.
 
 ## Version Format
 
@@ -16,10 +16,44 @@ MAJOR.MINOR.PATCH
 
 ## Version History
 
-### v3.4.0 (Current) - Minor Release
+### v4.0.0 (Current) - Major Release
+
+**Release Date**: 16/08/2025
+**Status**: Development
+**Type**: Major
+
+**Changes**:
+
+BREAKING CHANGE: Complete rebrand from Steel to Biuld v4.0.0 with Supabase migration
+
+### Major Changes:
+- Rebranded all references from "Steel" to "Biuld" across frontend/backend
+- Migrated file storage from AWS S3 to Supabase Storage
+- Updated version from v3.4.0 to v4.0.0
+- Removed AWS SDK dependency and related S3 code
+
+### Frontend Changes and Backend Changes:
+- Updated package names: steel-frontend → biuld-frontend
+- Updated branding in AuthModal, ChatLayout, and components
+- Changed localStorage keys: steel_* → biuld_*
+- Updated environment variables and API token storage
+- Updated meta descriptions and document titles
+- Updated package names: steel-backend → biuld-backend
+- Removed aws-sdk dependency from package.json
+- Replaced S3 file upload with Supabase metadata endpoint
+- Updated Prisma schema: storageProvider default "s3" → "supabase"
+- Updated API responses and logging messages
+- Cleaned CORS origins for new domain
+
+### Documentation:
+- Updated README.md with new branding
+- Created comprehensive rebrand guide (REBRAND_STEEL_TO_BIULD.md)
+- Updated deployment guides and version references
+
+### v3.4.0 (Previous) - Minor Release
 
 **Release Date**: 14/08/2025
-**Status**: Production Ready
+**Status**: Deprecated
 **Type**: Minor
 
 **Changes**:
@@ -39,7 +73,7 @@ MAJOR.MINOR.PATCH
 ### v3.3.3 (Previous) - Patch Release
 
 **Release Date**: 14/08/2025
-**Status**: Production Ready
+**Status**: Deprecated
 **Type**: Patch
 
 **Changes**:
@@ -52,7 +86,7 @@ MAJOR.MINOR.PATCH
 ### v3.3.2 (Previous) - Patch Release
 
 **Release Date**: 14/08/2025
-**Status**: Production Ready
+**Status**: Deprecated
 **Type**: Patch
 
 **Changes**:
@@ -63,7 +97,7 @@ MAJOR.MINOR.PATCH
 
 ### v3.3.1 (Previous) - Patch Release
 
-**Release Date**: 13/08/2025
+**Release Date**: 14/08/2025
 **Status**: Deprecated
 **Type**: Patch
 
@@ -100,7 +134,7 @@ MAJOR.MINOR.PATCH
 ### v3.2.5 (Previous) - Patch Release
 
 **Release Date**: 12/08/2025
-**Status**: Depracated
+**Status**: Deprecated
 **Type**: Patch
 
 **Changes**:
@@ -152,7 +186,7 @@ MAJOR.MINOR.PATCH
 - Made bio field in UserModal editable and included in profile update API.
 - Minor bug fixes and deployment improvements.
 
-### v3.2.1 - Patch Release
+### v3.2.1 (Previous) - Patch Release
 
 **Release Date**: 10/08/2025
 **Status**: Deprecated
@@ -167,7 +201,7 @@ MAJOR.MINOR.PATCH
 - Synced all UI and API version references to 3.2.1
 - Minor bug fixes and deployment improvements
 
-### v3.2.0 - Previous Minor Release
+### v3.2.0 (Previous) - Minor Release
 
 **Release Date**: 10/08/2025
 **Status**: Deprecated
@@ -183,7 +217,7 @@ MAJOR.MINOR.PATCH
 - Updated deployment and versioning guides for v3.2.0.
 - Minor bug fixes and refactoring for consistency.
 
-### v3.1.0 - Previous Minor Release
+### v3.1.0 (Previous) - Minor Release
 
 **Release Date**: 10/08/2025
 **Status**: Deprecated
@@ -201,8 +235,9 @@ MAJOR.MINOR.PATCH
 - Synchronized version numbering across all project files
 - Enhanced component prop typing and interface definitions
 
-### v3.0.5 - Patch Release
+### v3.0.5 (Previous) - Patch Release
 
+**Release Date**: 10/08/2025
 **Status**: Deprecated
 **Type**: Patch
 
@@ -214,8 +249,9 @@ MAJOR.MINOR.PATCH
 - Updated Sidebar component to reflect the new version.
 - Refactored code for better readability and consistency across multiple files
 
-### v3.0.4 - Patch Release
+### v3.0.4 (Previous) - Patch Release
 
+**Release Date**: 9/08/2025
 **Status**: Deprecated
 **Type**: Patch
 
@@ -226,8 +262,9 @@ MAJOR.MINOR.PATCH
 - Improved Prisma logging typings
 - Fixed Prisma schema relation issues; clean build verified
 
-### v3.0.3 - Patch Release
+### v3.0.3 (Previous) - Patch Release
 
+**Release Date**: 09/08/2025
 **Status**: Deprecated
 **Type**: Patch
 
@@ -240,8 +277,9 @@ MAJOR.MINOR.PATCH
 - Improved Prisma logging typings.
 - Changed Procfile to use npm start for web process.
 
-### v3.0.2 - Patch Release
+### v3.0.2 (Previous) - Patch Release
 
+**Release Date**: 09/08/2025
 **Status**: Deprecated
 **Type**: Patch
 
@@ -251,8 +289,9 @@ MAJOR.MINOR.PATCH
 - Updated environment variable names in env.example and next.config.js.
 - Modified ChatLayout to accommodate new environment variable structure.
 
-### v3.0.1 - Patch Release
+### v3.0.1 (Previous) - Patch Release
 
+**Release Date**: 09/08/2025
 **Status**: Deprecated
 **Type**: Patch
 
@@ -260,9 +299,9 @@ MAJOR.MINOR.PATCH
 
 - Added vercel.json configuration for proper frontend build
 
-### v3.0.0 - Major release
+### v3.0.0 (Previous) - Major release
 
-**Release Date**: 8/10/2025
+**Release Date**: 09/10/2025
 **Status**: Deprecated
 
 #### Major Features
@@ -290,22 +329,38 @@ MAJOR.MINOR.PATCH
 
 ### v2.1.0 (Previous)
 
-**Release Date**: Previous release
-**Status**: Legacy
+**Release Date**: 01/08/2025
+**Status**: Deprecated
+**Type**: Minor
 
-#### Features
+**Changes**:
 
 - Basic chat functionality
 - User registration and login
 - Simple message sending
 - Basic UI components
 
+### v1.1.0 (Previous)
+
+**Release Date**: 31/07/2025
+**Status**: Legacy
+**Type**: Minor
+
+**Changes**:
+
+- Created backend with Express and Socket.io for real-time chat functionality.
+- Implemented frontend using Next.js with real-time messaging capabilities.
+- Added .gitignore and LICENSE files.
+- Updated README.md with setup instructions and project details.
+- Included necessary configurations for deployment on Vercel and Render/Heroku.
+
 ### v1.0.0 (Initial)
 
-**Release Date**: Initial release
+**Release Date**: Initial release (31/07/2025)
 **Status**: Legacy
+**Type**: Initial
 
-#### Features
+**Features**:
 
 - Project foundation
 - Basic architecture setup
@@ -313,7 +368,7 @@ MAJOR.MINOR.PATCH
 
 ## Future Version Planning
 
-### v3.5.0 (Future Minor Release)
+### v4.1.0 (Future Minor Release)
 
 **Target Date**: TBD
 **Type**: Minor Release (New Features)
@@ -329,7 +384,7 @@ MAJOR.MINOR.PATCH
 - [ ] Multi-language support
 - [ ] Advanced security features
 
-### v4.0.0 (Next Major Release)
+### v5.0.0 (Next Major Release)
 
 **Target Date**: TBD
 **Type**: Major Release (Breaking Changes)
@@ -349,7 +404,7 @@ MAJOR.MINOR.PATCH
 
 ## Version Update Process
 
-### For Minor Releases (v3.5.0, v3.6.0, etc.)
+### For Minor Releases (v4.1.0, v4.2.0, etc.)
 
 1. **Update package.json versions**
 
@@ -368,13 +423,15 @@ MAJOR.MINOR.PATCH
    - Update README.md with new features
    - Update DEPLOYMENT_GUIDE.md if needed
    - Update VERSIONING.md with release notes
+   - Update SUPABASE_SETUP.md if needed
+   - update PROJECT_SUMMARY.md with release notes
 
 3. **Create release notes**
    - Document new features
    - List bug fixes
    - Note any breaking changes
 
-### For Major Releases (v4.0.0, v5.0.0, etc.)
+### For Major Releases (v5.0.0, v6.0.0, etc.)
 
 1. **Plan breaking changes**
 
@@ -461,20 +518,20 @@ MAJOR.MINOR.PATCH
 
 ## Migration Guides
 
-### v2.x.x to v3.0.0
+### v3.x.x to v4.0.0
 
 - Database schema changes
 - API endpoint updates
 - Authentication changes
 - File storage configuration
 
-### v3.0.x to v3.1.x
+### v4.0.x to v4.1.x
 
 - Minor feature additions
 - Performance improvements
 - Bug fixes
 
-### v3.x.x to v4.0.0 (Future)
+### v4.x.x to v5.0.0 (Future)
 
 - Major architectural changes
 - Breaking API changes
@@ -487,13 +544,13 @@ MAJOR.MINOR.PATCH
 
 ### Current Version
 
-- **Backend**: v3.4.0
-- **Frontend**: v3.4.0
+- **Backend**: v4.0.0
+- **Frontend**: v4.0.0
 - **Status**: Production Ready
 
 ### Next Release
 
-- **Target**: v3.5.0
+- **Target**: v4.1.0
 - **Type**: Minor Release
 - **Focus**: Performance and UX improvements
 

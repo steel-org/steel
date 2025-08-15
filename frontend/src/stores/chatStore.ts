@@ -27,7 +27,6 @@ interface ChatState {
   updateChat: (chatId: string, updates: Partial<Chat>) => void;
   removeChat: (chatId: string) => void;
   setSelectedChat: (chat: Chat | null) => void;
-  createGroupChat: (name: string, userIds: string[]) => Chat | undefined;
   
   // Messages
   messages: Record<string, Message[]>;
@@ -132,42 +131,6 @@ export const useChatStore = create<ChatState>()(
           selectedChat: state.selectedChat?.id === chatId ? null : state.selectedChat
         })),
         setSelectedChat: (chat) => set({ selectedChat: chat }),
-        createGroupChat: (name, userIds) => {
-          const state = get();
-          if (!state.currentUser) return;
-          
-          const chatId = `group_${Date.now()}`;
-          const allUserIds = [...new Set([state.currentUser.id, ...userIds])];
-          
-          const chat: Chat = {
-            id: chatId,
-            name,
-            type: 'GROUP',
-            members: allUserIds.map(userId => {
-              const user = state.users.find(u => u.id === userId) || state.currentUser!;
-              return {
-                id: `${chatId}_${userId}`,
-                role: userId === state.currentUser?.id ? 'OWNER' : 'MEMBER',
-                joinedAt: new Date().toISOString(),
-                user
-              };
-            }),
-            participants: allUserIds,
-            owner: state.currentUser,
-            isGroup: true,
-            lastMessage: undefined,
-            unreadCount: 0,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          
-          // Add to chats list
-          set(state => ({
-            chats: [...state.chats, chat]
-          }));
-          
-          return chat;
-        },
         
         // Messages
         messages: {},
@@ -328,12 +291,10 @@ export const useChatStore = create<ChatState>()(
         handleMessageDeleted: ({ messageId, chatId, deletedForEveryone }) => {
           const { messages, setMessages, selectedChat } = get();
           
-          // If deleted for everyone or if it's the current user's chat
           if (deletedForEveryone || (selectedChat && selectedChat.id === chatId)) {
             const chatMessages = messages[chatId] || [];
             const updatedMessages = chatMessages.filter(msg => msg.id !== messageId);
             setMessages(chatId, updatedMessages);
-            // Note: We're not persisting this to storage since it's a soft delete
           }
         },
         

@@ -8,13 +8,13 @@ class ApiService {
   setToken(token: string) {
     this.token = token;
     if (typeof window !== 'undefined') {
-      localStorage.setItem('steel_token', token);
+      localStorage.setItem('biuld_token', token);
     }
   }
 
   getToken(): string | null {
     if (!this.token) {
-      this.token = localStorage.getItem('steel_token');
+      this.token = localStorage.getItem('biuld_token');
     }
     return this.token;
   }
@@ -22,7 +22,7 @@ class ApiService {
   clearToken() {
     this.token = null;
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('steel_token');
+      localStorage.removeItem('biuld_token');
     }
   }
 
@@ -46,7 +46,6 @@ class ApiService {
     try {
       const response = await fetch(url, config);
       
-      // For logout, we might get a 204 No Content response
       if (response.status === 204) {
         return { success: true, data: {} as T };
       }
@@ -54,7 +53,6 @@ class ApiService {
       const data = await response.json();
 
       if (!response.ok) {
-        // If we get a 401 on logout, it's okay - we still want to clear the token
         if (endpoint === '/api/auth/logout' && response.status === 401) {
           this.clearToken();
           return { success: true, data: { message: 'Logged out successfully' } as T };
@@ -120,7 +118,7 @@ class ApiService {
         }
       }
       
-      localStorage.removeItem('steel_token');
+      localStorage.removeItem('biuld_token');
       document.cookie = 'token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
       
       return { success: true, message: 'Logged out successfully' };

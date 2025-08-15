@@ -30,11 +30,16 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatJoinDate = (date: string | Date) => {
+    if (!date) return 'Unknown';
+    
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) return 'Invalid Date';
+    
     return new Intl.DateTimeFormat("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
-    }).format(new Date(date));
+    }).format(dateObj);
   };
 
   const generateAvatar = () => {
@@ -106,7 +111,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("steel-token")}`,
+            Authorization: `Bearer ${localStorage.getItem("biuld-token")}`,
           },
           body: formData,
         }
@@ -136,10 +141,11 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
         finalAvatar = generateAvatar();
       }
 
-      const response = await fetch(`/api/users/${user?.id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/${user?.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("biuld-token")}`,
         },
         body: JSON.stringify({
           username,
