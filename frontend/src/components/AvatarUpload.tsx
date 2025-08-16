@@ -39,19 +39,8 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
       // Upload to Supabase
       const avatarUrl = await uploadAvatar(file, currentUser.id);
       
-      // Update backend database
-      const response = await fetch('/api/upload/avatar', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiService.getToken()}`
-        },
-        body: JSON.stringify({ avatarUrl })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update avatar in database');
-      }
+      // Update backend database via API service
+      await apiService.updateProfile({ avatar: avatarUrl });
 
       // Update local store
       updateUser(currentUser.id, { avatar: avatarUrl });

@@ -86,6 +86,14 @@ export default function ChatLayout() {
 
       // Connect to WebSocket
       await connectWebSocket();
+
+      // Load chats after successful connection
+      try {
+        const chats = await apiService.getChats();
+        useChatStore.getState().setChats(chats);
+      } catch (err) {
+        console.error('Failed to load chats:', err);
+      }
     } catch (error) {
       console.error("Failed to load current user:", error);
       apiService.clearToken();
@@ -295,6 +303,12 @@ export default function ChatLayout() {
     setCurrentUser(user);
     setShowAuthModal(false);
     await connectWebSocket();
+    try {
+      const chats = await apiService.getChats();
+      useChatStore.getState().setChats(chats);
+    } catch (err) {
+      console.error('Failed to load chats after auth:', err);
+    }
   };
 
   const handleLogout = async (fromSettings = false) => {
