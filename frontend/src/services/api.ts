@@ -125,7 +125,7 @@ class ApiService {
     } catch (error) {
       console.error('Unexpected error during logout:', error);
       this.clearToken();
-      localStorage.removeItem('steel_token');
+      localStorage.removeItem('biuld_token');
       document.cookie = 'token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
       
       return { 

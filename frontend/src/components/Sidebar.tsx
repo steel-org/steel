@@ -185,7 +185,7 @@ export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-xl font-bold text-gray-100">Steel Chat</h1>
+            <h1 className="text-xl font-bold text-gray-100">Biuld Chat</h1>
             <p className="text-sm text-gray-400">Private messaging</p>
           </div>
           <div className="flex gap-2">

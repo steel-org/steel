@@ -320,7 +320,6 @@ export const useChatStore = create<ChatState>()(
             return true;
           } catch (error) {
             console.error('Failed to delete message:', error);
-            // Revert optimistic update on error
             const chatMessages = messages[selectedChat.id] || [];
             setMessages(selectedChat.id, [...chatMessages]);
             return false;
@@ -329,7 +328,6 @@ export const useChatStore = create<ChatState>()(
         
         // Logout function that handles cleanup even when the user is no longer in the database
         logout: () => {
-          // Clear all state
           set({
             currentUser: null,
             users: [],
@@ -343,7 +341,7 @@ export const useChatStore = create<ChatState>()(
           });
           
           // Clear any stored tokens
-          localStorage.removeItem('steel_token');
+          localStorage.removeItem('biuld_token');
           document.cookie = 'token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
           
           // Force a page reload to ensure all components reset
@@ -353,7 +351,7 @@ export const useChatStore = create<ChatState>()(
         }
       }),
       {
-        name: 'steel-chat-store',
+        name: 'biuld-chat-store',
         partialize: (state) => ({
           currentUser: state.currentUser,
           users: state.users,

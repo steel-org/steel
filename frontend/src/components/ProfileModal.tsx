@@ -4,8 +4,11 @@ import { User } from '@/types';
 import { useChatStore } from '@/stores/chatStore';
 import AvatarUpload from './AvatarUpload';
 
-const formatLastSeen = (lastSeen: string | Date): string => {
+const formatLastSeen = (lastSeen?: string | Date): string => {
+  if (!lastSeen) return 'Unknown';
+
   const lastSeenDate = new Date(lastSeen);
+  if (isNaN(lastSeenDate.getTime())) return 'Unknown';
   const now = new Date();
   const diffInMinutes = Math.floor((now.getTime() - lastSeenDate.getTime()) / (1000 * 60));
   
@@ -190,7 +193,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     }`}
                   />
                   <span className="text-sm text-gray-600">
-                    {editedUser.status === 'online' ? 'Online' : `Last seen ${formatLastSeen(editedUser.lastSeen)}`}
+                    {editedUser.status === 'online' ? 'Online' : 'Offline'}
                   </span>
                 </div>
               </>
@@ -231,6 +234,17 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Last seen */}
+            {editedUser.lastSeen && (
+              <div className="flex items-start space-x-3">
+                <Calendar size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <div className="text-sm text-gray-500">Last seen</div>
+                  <div className="text-gray-700">{formatLastSeen(editedUser.lastSeen)}</div>
+                </div>
+              </div>
+            )}
 
             {isEditing ? (
               <div className="flex items-start space-x-3">

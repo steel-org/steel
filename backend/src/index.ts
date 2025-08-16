@@ -12,6 +12,7 @@ import { setupRoutes } from "./routes";
 import { setupWebSocket } from "./websocket";
 import { logger } from "./utils/logger";
 import { errorHandler } from "./middleware/errorHandler";
+import { setIO } from "./websocket/io";
 
 // Load environment variables
 dotenv.config();
@@ -27,6 +28,9 @@ const io = new Server(server, {
     credentials: true,
   },
 });
+
+// Make io available to route handlers
+setIO(io);
 
 // Security middleware
 app.use(helmet());
@@ -69,7 +73,7 @@ app.get("/api/health", (req, res) => {
   res.json({
     success: true,
     message: "Server is running",
-    version: "4.0.0",
+    version: "4.0.1",
     timestamp: new Date().toISOString(),
   });
 });
@@ -80,7 +84,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 server.listen(Number(PORT), "0.0.0.0", () => {
-  logger.info(`🚀 Biuld Backend v4.0.0 running on port ${PORT}`);
+  logger.info(`🚀 Biuld Backend v4.0.1 running on port ${PORT}`);
   logger.info(`📡 Socket.io server ready for connections`);
   logger.info(`🌐 Health check: http://localhost:${PORT}/api/health`);
   logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);

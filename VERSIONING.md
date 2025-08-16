@@ -1,6 +1,6 @@
 # 📋 Biuld - Version Management Guide
 
-## Current Version: v4.0.0
+## Current Version: v4.0.1
 
 Biuld Chat follows [Semantic Versioning](https://semver.org/) (SemVer) for version management.
 
@@ -16,10 +16,23 @@ MAJOR.MINOR.PATCH
 
 ## Version History
 
-### v4.0.0 (Current) - Major Release
+### v4.0.1 (Current) - Patch Release
 
 **Release Date**: 16/08/2025
-**Status**: Development
+**Status**: Production Ready
+**Type**: Patch
+
+**Changes**:
+
+- Version bump to v4.0.1 in all project files and UI components
+- Fixed WebSocket authentication error handling and logging
+- Enhanced user online/offline notifications and message handling in WebSocket service
+- Minor bug fixes and refactoring for consistency.
+
+### v4.0.0 (Previous) - Major Release
+
+**Release Date**: 16/08/2025
+**Status**: Deprecated
 **Type**: Major
 
 **Changes**:
@@ -544,8 +557,8 @@ BREAKING CHANGE: Complete rebrand from Steel to Biuld v4.0.0 with Supabase migra
 
 ### Current Version
 
-- **Backend**: v4.0.0
-- **Frontend**: v4.0.0
+- **Backend**: v4.0.1
+- **Frontend**: v4.0.1
 - **Status**: Production Ready
 
 ### Next Release

@@ -22,7 +22,7 @@ export const uploadFile = async (
   const filePath = `${folder}/${fileName}`
 
   const { data, error } = await supabase.storage
-    .from('steel-chat')
+    .from('biuld-chat')
     .upload(filePath, file, {
       cacheControl: '3600',
       upsert: false
@@ -33,7 +33,7 @@ export const uploadFile = async (
   }
 
   const { data: { publicUrl } } = supabase.storage
-    .from('steel-chat')
+    .from('biuld-chat')
     .getPublicUrl(filePath)
 
   return {
@@ -46,7 +46,7 @@ export const uploadFile = async (
 
 export const deleteFile = async (filePath: string): Promise<void> => {
   const { error } = await supabase.storage
-    .from('steel-chat')
+    .from('biuld-chat')
     .remove([filePath])
 
   if (error) {
