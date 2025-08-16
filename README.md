@@ -341,8 +341,8 @@ For support and questions:
 
 - Create a new issue on GitHub
 - Check the documentation
-- [Join our community](https://t.me/steel_org)
+- [Join our community](https://t.me/biuld_org)
 
 ---
 
-**Steel** - Code. Chat. Control. 🚀
+**Biuld** - Code. Chat. Control. 🚀

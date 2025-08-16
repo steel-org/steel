@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { apiService } from './api';
 import { useChatStore } from '@/stores/chatStore';
-import { User, MessageEvent, TypingEvent, ReactionEvent } from '@/types';
+import { User, Chat, MessageEvent, TypingEvent, ReactionEvent } from '@/types';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:5000';
 
@@ -267,6 +267,20 @@ class WebSocketService {
     // Chat events
     this.socket.on('joined_chat', (data: { chatId: string }) => {
       console.log('Joined chat:', data.chatId);
+    });
+
+    // New chat created 
+    this.socket.on('chat:created', (chat: Chat) => {
+      try {
+        console.log('chat:created received:', chat?.id);
+        const { chats, addChat } = useChatStore.getState();
+        const exists = chats.some(c => c.id === chat.id);
+        if (!exists) {
+          addChat(chat);
+        }
+      } catch (err) {
+        console.error('Failed to handle chat:created event', err);
+      }
     });
 
     // Error events

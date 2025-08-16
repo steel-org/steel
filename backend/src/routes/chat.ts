@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { prisma } from "../utils/database";
 import { auth } from "../middleware/auth";
 import { validateChat } from "../middleware/validation";
+import { getIO } from "../websocket/io";
 
 const router = Router();
 
@@ -81,13 +82,10 @@ router.post("/", auth, validateChat, async (req: Request, res: Response) => {
       const existingChat = await prisma.chat.findFirst({
         where: {
           type: "DIRECT",
-          members: {
-            every: {
-              userId: {
-                in: [userId, ...memberIds],
-              },
-            },
-          },
+          AND: [
+            { members: { some: { userId } } },
+            { members: { some: { userId: memberIds[0] } } }
+          ],
         },
         include: {
           members: {
@@ -104,7 +102,13 @@ router.post("/", auth, validateChat, async (req: Request, res: Response) => {
         },
       });
 
-      if (existingChat) {
+      // Ensure the found DIRECT chat is exactly between the two users
+      if (
+        existingChat &&
+        existingChat.members.length === 2 &&
+        existingChat.members.some((m) => m.userId === userId) &&
+        existingChat.members.some((m) => m.userId === memberIds[0])
+      ) {
         return res.json({
           success: true,
           data: existingChat,
@@ -152,6 +156,17 @@ router.post("/", auth, validateChat, async (req: Request, res: Response) => {
         },
       },
     });
+
+    // Emit chat:created to other participants so their UI updates
+    try {
+      const io = getIO();
+      const participantIds = chat.members.map((m) => m.userId);
+      participantIds
+        .filter((id) => id !== userId)
+        .forEach((id) => io.to(`user:${id}`).emit("chat:created", chat));
+    } catch (e) {
+      // If io not initialized, continue without blocking API response
+    }
 
     return res.status(201).json({
       success: true,

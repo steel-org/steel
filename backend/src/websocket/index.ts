@@ -48,6 +48,11 @@ export const setupWebSocket = (io: Server) => {
   io.on("connection", (socket: AuthenticatedSocket) => {
     logger.info(`User connected: ${socket.id} (userId: ${socket.userId})`);
 
+    // Join a stable per-user room for targeted events
+    if (socket.userId) {
+      socket.join(`user:${socket.userId}`);
+    }
+
     socket.on("join", async (userData: { userId: string; username: string; avatar?: string }) => {
       const { userId, username, avatar } = userData;
 
