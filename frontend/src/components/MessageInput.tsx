@@ -37,13 +37,13 @@ const MessageInput: React.FC<MessageInputProps> = ({
       clearTimeout(typingTimeout.current);
     }
     
-    // Set a new timeout to stop typing after 2 seconds of inactivity
+    // Set a new timeout to stop typing after 1 seconds of inactivity
     if (typing) {
       typingTimeout.current = setTimeout(() => {
         if (onTyping) {
           onTyping(false);
         }
-      }, 2000);
+      }, 1000);
     }
   };
 

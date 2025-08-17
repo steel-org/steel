@@ -294,6 +294,16 @@ router.put("/:id", auth, async (req: Request, res: Response) => {
       },
     });
 
+    // Notify all participants that the chat was updated
+    try {
+      const io = getIO();
+      const participantIds = chat.members.map((m) => m.userId);
+      for (const uid of participantIds) {
+        io.to(`user:${uid}`).emit("chat:updated", chat);
+      }
+    } catch (e) {
+    }
+
     return res.json({
       success: true,
       data: chat,
@@ -303,6 +313,73 @@ router.put("/:id", auth, async (req: Request, res: Response) => {
       success: false,
       error: "Server error",
     });
+  }
+});
+
+// Add members to a chat (GROUP)
+router.post("/:id/members", auth, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const chatId = req.params.id;
+    const { memberIds } = req.body as { memberIds: string[] };
+
+    if (!Array.isArray(memberIds) || memberIds.length === 0) {
+      return res.status(400).json({ success: false, error: "memberIds is required" });
+    }
+
+    const chat = await prisma.chat.findUnique({
+      where: { id: chatId },
+      include: { members: true, owner: true },
+    });
+
+    if (!chat || chat.type !== 'GROUP') {
+      return res.status(404).json({ success: false, error: "Group chat not found" });
+    }
+
+    const membership = await prisma.chatMember.findUnique({
+      where: { userId_chatId: { userId, chatId } },
+    });
+
+    if (!membership || (membership.role !== 'OWNER' && membership.role !== 'ADMIN')) {
+      return res.status(403).json({ success: false, error: 'Not authorized to add members' });
+    }
+
+    // Filter out users already in chat
+    const existingUserIds = new Set(chat.members.map(m => m.userId));
+    const toAdd = memberIds.filter(id => id && !existingUserIds.has(id) && id !== userId);
+    if (toAdd.length === 0) {
+      const current = await prisma.chat.findUnique({
+        where: { id: chatId },
+        include: {
+          members: { include: { user: { select: { id: true, username: true, avatar: true, status: true, lastSeen: true } } } },
+          owner: { select: { id: true, username: true } },
+        }
+      });
+      return res.json({ success: true, data: current });
+    }
+
+    await prisma.chatMember.createMany({
+      data: toAdd.map(uid => ({ userId: uid, chatId, role: 'MEMBER' })),
+      skipDuplicates: true,
+    });
+
+    const updated = await prisma.chat.findUnique({
+      where: { id: chatId },
+      include: {
+        members: { include: { user: { select: { id: true, username: true, avatar: true, status: true, lastSeen: true } } } },
+        owner: { select: { id: true, username: true } },
+      }
+    });
+
+    // Emit chat:updated to all participants
+    try {
+      const io = getIO();
+      const participantIds = updated?.members.map(m => m.userId) || [];
+      participantIds.forEach(uid => io.to(`user:${uid}`).emit('chat:updated', updated));
+    } catch (e) {}
+    return res.json({ success: true, data: updated });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 

@@ -173,6 +173,14 @@ class ApiService {
     return response.data!;
   }
 
+  async addChatMembers(chatId: string, memberIds: string[]): Promise<Chat> {
+    const response = await this.request<Chat>(`/api/chats/${chatId}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ memberIds }),
+    });
+    return response.data!;
+  }
+
   async deleteChat(chatId: string): Promise<void> {
     await this.request(`/api/chats/${chatId}`, { method: 'DELETE' });
   }

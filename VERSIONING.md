@@ -1,6 +1,6 @@
 # 📋 Biuld - Version Management Guide
 
-## Current Version: v4.0.4
+## Current Version: v4.1.0
 
 Biuld Chat follows [Semantic Versioning](https://semver.org/) (SemVer) for version management.
 
@@ -16,10 +16,27 @@ MAJOR.MINOR.PATCH
 
 ## Version History
 
-### v4.0.4 (Current) - Patch Release
+### v4.1.0 (Current) - Minor Release
 
 **Release Date**: 17/08/2025
 **Status**: Production Ready
+**Type**: Minor
+
+**Changes**:
+
+- Version bump to v4.1.0 in all project files and UI components.
+- Rendered image attachments inline with click-to-zoom modal.
+- Kept non-image attachments as links with download icon.
+- Removed duplicate delete confirmation dialog.
+- Showed copy button for CODE messages.
+- Wired CodeEditor send to accept and forward optional filename.
+- General integration cleanup, minor UI/UX polish, logs, and consistency tweaks.
+- Minor bug fixes and refactoring for consistency.
+
+### v4.0.4 (Previous) - Patch Release
+
+**Release Date**: 17/08/2025
+**Status**: Deprecated
 **Type**: Patch
 
 **Changes**:
@@ -419,7 +436,7 @@ BREAKING CHANGE: Complete rebrand from Steel to Biuld v4.0.0 with Supabase migra
 
 ## Future Version Planning
 
-### v4.1.0 (Future Minor Release)
+### v4.2.0 (Future Minor Release)
 
 **Target Date**: TBD
 **Type**: Minor Release (New Features)
@@ -455,7 +472,7 @@ BREAKING CHANGE: Complete rebrand from Steel to Biuld v4.0.0 with Supabase migra
 
 ## Version Update Process
 
-### For Minor Releases (v4.1.0, v4.2.0, etc.)
+### For Minor Releases (v4.2.0, v4.3.0, etc.)
 
 1. **Update package.json versions**
 
@@ -595,13 +612,13 @@ BREAKING CHANGE: Complete rebrand from Steel to Biuld v4.0.0 with Supabase migra
 
 ### Current Version
 
-- **Backend**: v4.0.4
-- **Frontend**: v4.0.4
+- **Backend**: v4.1.0
+- **Frontend**: v4.1.0
 - **Status**: Production Ready
 
 ### Next Release
 
-- **Target**: v4.1.0
+- **Target**: v4.2.0
 - **Type**: Minor Release
 - **Focus**: Performance and UX improvements
 
