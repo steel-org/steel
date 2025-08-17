@@ -1,6 +1,6 @@
 # 📋 Biuld - Version Management Guide
 
-## Current Version: v4.0.2
+## Current Version: v4.0.3
 
 Biuld Chat follows [Semantic Versioning](https://semver.org/) (SemVer) for version management.
 
@@ -16,7 +16,7 @@ MAJOR.MINOR.PATCH
 
 ## Version History
 
-### v4.0.2 (Current) - Patch Release
+### v4.0.3 (Current) - Patch Release
 
 **Release Date**: 16/08/2025
 **Status**: Production Ready
@@ -24,7 +24,19 @@ MAJOR.MINOR.PATCH
 
 **Changes**:
 
-- Version bump to v4.0.2 in all project files and UI components
+- Version bump to v4.0.3 in all project files and UI components.
+- Added server-side supabase client for file upload and avatar serving.
+- Minor bug fixes and refactoring for consistency.
+
+### v4.0.2 (Previous) - Patch Release
+
+**Release Date**: 16/08/2025
+**Status**: Deprecated
+**Type**: Patch
+
+**Changes**:
+
+- Version bump to v4.0.2 in all project files and UI components.
 - Fixed Avatar upload and serving endpoints in backend.
 - Fixed and added loading of chats in sidebar after login.
 - Minor bug fixes and refactoring for consistency.
@@ -570,8 +582,8 @@ BREAKING CHANGE: Complete rebrand from Steel to Biuld v4.0.0 with Supabase migra
 
 ### Current Version
 
-- **Backend**: v4.0.2
-- **Frontend**: v4.0.2
+- **Backend**: v4.0.3
+- **Frontend**: v4.0.3
 - **Status**: Production Ready
 
 ### Next Release

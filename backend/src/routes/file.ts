@@ -14,7 +14,7 @@ const uploadLimiter = rateLimit({
   message: "Too many file operations, please try again after 15 minutes"
 });
 
-// Save file metadata (file uploaded via Supabase on frontend)
+// Save file metadata
 router.post(
   "/save-metadata",
   auth,
@@ -109,7 +109,7 @@ router.get(
   }
 });
 
-// Get download URL (Supabase URLs are direct)
+// Get download URL
 router.get(
   "/:id/download",
   auth,

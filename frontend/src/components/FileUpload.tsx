@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Upload, X, File, Image, FileText } from 'lucide-react';
-import { uploadChatFile, FileUploadResult } from '@/services/supabase';
+import { FileUploadResult } from '@/services/supabase';
+import { apiService } from '@/services/api';
 import { useChatStore } from '@/stores/chatStore';
 
 interface FileUploadProps {
@@ -34,7 +35,13 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
     setUploading(true);
     try {
-      const result = await uploadChatFile(file, currentUser.id);
+      const data = await apiService.uploadChatFile(file);
+      const result: FileUploadResult = {
+        url: data.url,
+        path: data.path,
+        size: data.size,
+        type: data.type,
+      };
       onFileUploaded(result);
       onClose();
     } catch (error) {

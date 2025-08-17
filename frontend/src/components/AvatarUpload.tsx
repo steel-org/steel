@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { Camera, Upload, X } from 'lucide-react';
-import { uploadAvatar } from '@/services/supabase';
 import { useChatStore } from '@/stores/chatStore';
 import { apiService } from '@/services/api';
 
@@ -36,11 +35,8 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
 
     setUploading(true);
     try {
-      // Upload to Supabase
-      const avatarUrl = await uploadAvatar(file, currentUser.id);
-      
-      // Update backend database via API service
-      await apiService.updateProfile({ avatar: avatarUrl });
+      // Upload to backend (server uploads to Supabase with service role)
+      const avatarUrl = await apiService.uploadAvatar(file);
 
       // Update local store
       updateUser(currentUser.id, { avatar: avatarUrl });

@@ -25,7 +25,7 @@ export default function ChatArea({
   onReplyToMessage,
   onCancelReply,
 }: ChatAreaProps) {
-  const { selectedChat, currentUser, messages, typingUsers, deleteMessage } = useChatStore();
+  const { selectedChat, currentUser, messages, typingUsers, deleteMessage, users } = useChatStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showCodeInput, setShowCodeInput] = useState(false);
 
@@ -33,6 +33,9 @@ export default function ChatArea({
   const otherUser = selectedChat?.members.find(
     (member) => member.user.id !== currentUser?.id
   )?.user;
+  const liveOtherUser = otherUser
+    ? (users.find((u) => u.id === otherUser.id) || otherUser)
+    : null;
   const chatTypingUsers = selectedChat
     ? Array.from(typingUsers[selectedChat.id] || new Set())
     : [];
@@ -121,7 +124,7 @@ export default function ChatArea({
     }
   };
 
-  if (!selectedChat || !otherUser) {
+  if (!selectedChat || !liveOtherUser) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
@@ -159,20 +162,20 @@ export default function ChatArea({
         <div className="flex items-center space-x-3">
           <img
             src={
-              otherUser.avatar ||
-              `https://ui-avatars.com/api/?name=${encodeURIComponent(otherUser.username)}&background=3b82f6&color=ffffff&size=128&rounded=true`
+              liveOtherUser.avatar ||
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(liveOtherUser.username)}&background=3b82f6&color=ffffff&size=128&rounded=true`
             }
-            alt={otherUser.username}
+            alt={liveOtherUser.username}
             className="w-10 h-10 rounded-full"
           />
           <div>
             <h2 className="text-lg font-semibold text-gray-100">
-              {otherUser.username}
+              {liveOtherUser.username}
             </h2>
             <p className="text-sm text-gray-400">
-              {otherUser.status === 'online' 
+              {liveOtherUser.status === 'online' 
                 ? 'Online' 
-                : `Last seen ${otherUser.lastSeen}`}
+                : `Last seen ${liveOtherUser.lastSeen}`}
             </p>
           </div>
         </div>
@@ -188,7 +191,7 @@ export default function ChatArea({
                 Replying to{" "}
                 {replyingTo.sender.id === currentUser?.id
                   ? "yourself"
-                  : otherUser.username}
+                  : liveOtherUser.username}
               </span>
             </div>
             <button
@@ -211,7 +214,7 @@ export default function ChatArea({
             key={message.id}
             message={message}
             currentUser={currentUser!}
-            otherUser={otherUser}
+            otherUser={liveOtherUser}
             onDeleteMessage={onDeleteMessage || ((messageId) => deleteMessage(messageId, false))}
             onReplyToMessage={onReplyToMessage}
           />
@@ -222,10 +225,10 @@ export default function ChatArea({
           <div className="flex items-center space-x-2">
             <img
               src={
-                otherUser.avatar ||
-                `https://ui-avatars.com/api/?name=${encodeURIComponent(otherUser.username)}&background=3b82f6&color=ffffff&size=128&rounded=true`
+                liveOtherUser.avatar ||
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(liveOtherUser.username)}&background=3b82f6&color=ffffff&size=128&rounded=true`
               }
-              alt={otherUser.username}
+              alt={liveOtherUser.username}
               className="w-6 h-6 rounded-full"
             />
             <div className="flex items-center space-x-1 text-sm text-gray-400">
@@ -274,9 +277,9 @@ export default function ChatArea({
                   ? `Reply to ${
                       replyingTo.sender.id === currentUser?.id
                         ? "your message"
-                        : otherUser?.username || 'the user'
+                        : liveOtherUser?.username || 'the user'
                     }...`
-                  : `Message ${otherUser?.username || '...'}`
+                  : `Message ${liveOtherUser?.username || '...'}`
               }
             />
 
