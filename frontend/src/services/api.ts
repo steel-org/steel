@@ -243,11 +243,17 @@ class ApiService {
   async uploadAvatar(file: File): Promise<string> {
     const form = new FormData();
     form.append('avatar', file);
-    const response = await this.request<{ avatarUrl: string }>(`/api/upload/avatar`, {
+    const response = await this.request<any>(`/api/upload/avatar`, {
       method: 'POST',
       body: form,
     });
-    return (response.data as any).avatarUrl;
+    const d: any = response as any;
+    const url = d?.data?.avatarUrl ?? d?.avatarUrl;
+    if (!url) {
+      const err = d?.error || 'Avatar URL missing in response';
+      throw new Error(err);
+    }
+    return url;
   }
 
   // Chat files

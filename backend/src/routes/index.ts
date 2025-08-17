@@ -19,7 +19,7 @@ export const setupRoutes = (app: Express) => {
   app.get("/api/docs", (req: Request, res: Response) => {
     res.json({
       name: "Biuld API",
-      version: "4.0.3",
+      version: "4.0.4",
       endpoints: {
         auth: {
           "POST /api/auth/register": "Register new user",

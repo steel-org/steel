@@ -7,7 +7,7 @@ export default function Document() {
         <meta charSet="utf-8" />
         <meta
           name="description"
-          content="Biuld - Modern Developer Chat Platform v4.0.3"
+          content="Biuld - Modern Developer Chat Platform v4.0.4"
         />
         <link rel="icon" href="/favicon.ico" />
       </Head>
