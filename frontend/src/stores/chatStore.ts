@@ -311,7 +311,7 @@ export const useChatStore = create<ChatState>()(
             setMessages(selectedChat.id, updatedMessages);
             
             // Notify server
-            socket.emit("deleteMessage", {
+            socket.emit("delete_message", {
               messageId,
               chatId: selectedChat.id,
               deleteForEveryone

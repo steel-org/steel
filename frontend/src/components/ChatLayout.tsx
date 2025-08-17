@@ -134,47 +134,35 @@ export default function ChatLayout() {
       });
     });
 
-    // Handle new messages
-    wsService.on("messageReceived", (message: Message) => {
-      if (selectedChat) {
-        addMessage(selectedChat.id, message);
-        saveMessagesToStorage(selectedChat.id, [
-          ...(messages[selectedChat.id] || []),
-          message,
-        ]);
-      }
+    // Handle new messages (backend emits message_received with { message })
+    wsService.on("messageReceived", (payload: any) => {
+      const msg: Message = payload?.message || payload;
+      if (!msg?.chatId) return;
+      const chatId = msg.chatId;
+      addMessage(chatId, msg);
+      saveMessagesToStorage(chatId, [
+        ...(messages[chatId] || []),
+        msg,
+      ]);
     });
 
     wsService.on("newMessage", (message: Message) => {
-      if (selectedChat) {
-        addMessage(selectedChat.id, message);
-        saveMessagesToStorage(selectedChat.id, [
-          ...(messages[selectedChat.id] || []),
-          message,
-        ]);
+      if (!message?.chatId) return;
+      const chatId = message.chatId;
+      addMessage(chatId, message);
+      saveMessagesToStorage(chatId, [
+        ...(messages[chatId] || []),
+        message,
+      ]);
 
-        // Mark as read if conversation is active
-        if (
-          selectedChat &&
-          ((message.sender.id ===
-            selectedChat.members.find(
-              (member) => member.user.id !== currentUser?.id
-            )?.user.id &&
-            selectedChat.members.some(
-              (member) => member.user.id === currentUser?.id
-            )) ||
-            (selectedChat.members.some(
-              (member) => member.user.id === message.sender.id
-            ) &&
-              message.sender.id === currentUser?.id))
-        ) {
-          const socket = wsService.getSocket();
-          if (socket) {
-            socket.emit("mark_as_read", {
-              messageId: message.id,
-              chatId: selectedChat.id,
-            });
-          }
+      // If currently viewing this chat, optionally mark as read (event name may differ server-side)
+      if (selectedChat?.id === chatId) {
+        const socket = wsService.getSocket();
+        if (socket) {
+          socket.emit("mark_as_read", {
+            messageId: message.id,
+            chatId,
+          });
         }
       }
     });
@@ -343,11 +331,12 @@ export default function ChatLayout() {
     console.log('Starting new conversation with user:', userId);
 
     try {
-      const existingChat = chats.find(chat => 
-        !chat.isGroup && 
-        chat.participants?.includes(userId) && 
-        chat.participants?.includes(currentUser.id)
-      );
+      // Find an existing DIRECT chat between current user and the target user
+      const existingChat = chats.find((chat) => {
+        if (chat.type !== 'DIRECT') return false;
+        const memberIds = (chat.members || []).map((m: any) => m.userId || m.user?.id);
+        return memberIds.includes(userId) && memberIds.includes(currentUser.id);
+      });
   
       if (existingChat) {
         console.log('Found existing chat:', existingChat.id);

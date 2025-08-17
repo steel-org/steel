@@ -34,9 +34,11 @@ class ApiService {
     const url = `${API_BASE_URL}${endpoint}`;
     const token = this.getToken();
 
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+
     const config: RequestInit = {
       headers: {
-        'Content-Type': 'application/json',
+        ...(!isFormData && { 'Content-Type': 'application/json' }),
         ...(!skipAuth && token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
       },
@@ -235,6 +237,28 @@ class ApiService {
   async downloadFile(fileId: string): Promise<string> {
     const response = await this.request<{ downloadUrl: string }>(`/api/files/${fileId}/download`);
     return response.data!.downloadUrl;
+  }
+
+  // Avatars
+  async uploadAvatar(file: File): Promise<string> {
+    const form = new FormData();
+    form.append('avatar', file);
+    const response = await this.request<{ avatarUrl: string }>(`/api/upload/avatar`, {
+      method: 'POST',
+      body: form,
+    });
+    return (response.data as any).avatarUrl;
+  }
+
+  // Chat files
+  async uploadChatFile(file: File): Promise<any> {
+    const form = new FormData();
+    form.append('file', file);
+    const response = await this.request(`/api/upload/chat-file`, {
+      method: 'POST',
+      body: form,
+    });
+    return response.data as any; // { url, path, size, type, originalName }
   }
 }
 

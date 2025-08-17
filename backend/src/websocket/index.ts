@@ -125,6 +125,75 @@ export const setupWebSocket = (io: Server) => {
       }
     });
 
+    // New unified chat message handler
+    socket.on("send_message", async (data: {
+      chatId: string;
+      content: string;
+      type?: string;
+      replyToId?: string;
+      language?: string;
+      filename?: string;
+    }) => {
+      try {
+        if (!socket.userId) return;
+
+        const { chatId, content, type = "TEXT", replyToId } = data;
+
+        // Verify membership
+        const chat = await prisma.chat.findUnique({
+          where: { id: chatId },
+          include: {
+            members: { select: { userId: true } },
+          },
+        });
+
+        if (!chat) return;
+
+        const isParticipant = chat.members.some((m) => m.userId === socket.userId);
+        if (!isParticipant) return;
+
+        // Persist message
+        const message = await prisma.message.create({
+          data: {
+            chatId,
+            content,
+            type: type as any,
+            senderId: socket.userId,
+            replyToId: replyToId || null,
+          },
+          include: {
+            sender: {
+              select: { id: true, username: true, avatar: true },
+            },
+            replyTo: {
+              include: {
+                sender: { select: { id: true, username: true } },
+              },
+            },
+            attachments: true,
+            reactions: {
+              include: { user: { select: { id: true, username: true } } },
+            },
+          },
+        });
+
+        // Update chat lastMessage
+        await prisma.chat.update({
+          where: { id: chatId },
+          data: { lastMessage: new Date() },
+        });
+
+        // Broadcast to all participants via per-user rooms
+        const participantIds = chat.members.map((m) => m.userId);
+        for (const uid of participantIds) {
+          io.to(`user:${uid}`).emit("message_received", { message });
+          io.to(`user:${uid}`).emit("new_message", message);
+        }
+      } catch (err) {
+        console.error("Error handling send_message:", err);
+      }
+    });
+
     // Handle private messages
     socket.on("privateMessage", (messageData: {
       recipientId: string;
@@ -181,19 +250,31 @@ export const setupWebSocket = (io: Server) => {
       }
     });
 
-    // Handle typing indicator
-    socket.on("typing", (data: { recipientId: string; isTyping: boolean }) => {
-      const { recipientId, isTyping } = data;
-      const user = connectedUsers.get(socket.id);
-      if (!user) return;
+    // Handle typing indicator by chatId for all participants
+    socket.on("typing", async (data: { chatId: string; isTyping: boolean }) => {
+      try {
+        if (!socket.userId) return;
+        const { chatId, isTyping } = data;
 
-      const recipientSocket = io.sockets.sockets.get(recipientId);
-      if (recipientSocket) {
-        recipientSocket.emit("userTyping", {
-          userId: socket.id,
-          username: user.username,
-          isTyping,
+        const chat = await prisma.chat.findUnique({
+          where: { id: chatId },
+          include: { members: { select: { userId: true, user: { select: { username: true } } } } },
         });
+        if (!chat) return;
+        const me = chat.members.find((m) => m.userId === socket.userId);
+        const username = me?.user?.username || "";
+
+        for (const m of chat.members) {
+          if (m.userId === socket.userId) continue;
+          io.to(`user:${m.userId}`).emit("user_typing", {
+            chatId,
+            userId: socket.userId,
+            username,
+            isTyping,
+          });
+        }
+      } catch (err) {
+        console.error("Error handling typing event:", err);
       }
     });
 
@@ -238,14 +319,14 @@ export const setupWebSocket = (io: Server) => {
     });
 
     // Handle message deletion
-    socket.on("deleteMessage", async (data: { 
-      messageId: string; 
+    socket.on("delete_message", async (data: {
+      messageId: string;
       chatId: string;
-      deleteForEveryone: boolean;
+      deleteForEveryone?: boolean;
     }) => {
-      const { messageId, chatId, deleteForEveryone } = data;
-      const user = Array.from(connectedUsers.values()).find(u => u.id === socket.userId);
-      if (!user) return;
+      const { messageId, chatId } = data;
+      const userId = socket.userId;
+      if (!userId) return;
 
       try {
         const messageWithChat = await prisma.message.findUnique({
@@ -264,54 +345,32 @@ export const setupWebSocket = (io: Server) => {
           return;
         }
         
-        const isParticipant = messageWithChat.chat.members.some(member => member.userId === user.id);
+        const isParticipant = messageWithChat.chat.members.some(member => member.userId === userId);
         if (!isParticipant) {
           console.log('User is not a participant in this chat');
           return;
         }
 
-        if (deleteForEveryone) {
-          if (messageWithChat.senderId !== user.id) {
-            console.log('User is not the sender of this message');
-            return;
+        if (messageWithChat.senderId !== userId) {
+          console.log('User is not the sender of this message');
+          return;
+        }
+
+        await prisma.message.delete({ where: { id: messageId } });
+
+        const participants = await prisma.chat.findUnique({
+          where: { id: chatId },
+          select: { members: { select: { userId: true } } }
+        });
+
+        if (participants) {
+          for (const m of participants.members) {
+            io.to(`user:${m.userId}`).emit("message_deleted", { messageId, chatId });
           }
-          
-          await prisma.message.delete({
-            where: { id: messageId }
-          });
-
-          const participants = await prisma.chat.findUnique({
-            where: { id: chatId },
-            select: { members: { select: { userId: true } } }
-          });
-
-          if (participants) {
-            const participantUserIds = participants.members.map(m => m.userId);
-            const participantSockets = Array.from(connectedUsers.entries())
-              .filter(([_, u]) => participantUserIds.includes(u.id))
-              .map(([socketId]) => socketId);
-
-            if (participantSockets.length > 0) {
-              io.to(participantSockets).emit("messageDeleted", { 
-                messageId,
-                chatId,
-                deletedForEveryone: true
-              });
-            }
-          }
-        } else {
-          socket.emit("messageDeleted", { 
-            messageId,
-            chatId,
-            deletedForEveryone: false
-          });
         }
       } catch (error) {
         console.error('Error in deleteMessage handler:', error);
-       socket.emit("messageDeletionFailed", { 
-          messageId,
-          error: "Failed to delete message" 
-        });
+        socket.emit("messageDeletionFailed", { messageId, error: "Failed to delete message" });
       }
     });
     
