@@ -283,6 +283,17 @@ class WebSocketService {
       }
     });
 
+    // Chat updated
+    this.socket.on('chat:updated', (chat: Chat) => {
+      try {
+        console.log('chat:updated received:', chat?.id);
+        useChatStore.getState().updateChat(chat.id, chat as any);
+        this.emit('chatUpdated', chat);
+      } catch (err) {
+        console.error('Failed to handle chat:updated event', err);
+      }
+    });
+
     // Error events
     this.socket.on('error', (data: { message: string }) => {
       console.error('WebSocket error:', data.message);

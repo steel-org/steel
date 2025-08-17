@@ -427,13 +427,14 @@ export default function ChatLayout() {
     }, 100);
   };
 
-  const sendCodeSnippet = (code: string, language: string) => {
+  const sendCodeSnippet = (code: string, language: string, filename?: string) => {
     if (code.trim() && selectedChat && currentUser) {
       const messageData = {
         chatId: selectedChat.id,
         content: code,
-        type: 'code',
+        type: 'CODE',
         language,
+        ...(filename ? { filename } : {}),
         ...(replyingTo && {
           replyToId: replyingTo.id,
         }),
@@ -491,7 +492,7 @@ export default function ChatLayout() {
       <ChatArea
         replyingTo={replyingTo}
         onSendMessage={sendMessage}
-        onSendCodeSnippet={sendCodeSnippet}
+        onSendCodeSnippet={(code, language, filename) => sendCodeSnippet(code, language, filename)}
         onTyping={handleTyping}
         onDeleteMessage={deleteMessage}
         onReplyToMessage={replyToMessage}
