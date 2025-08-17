@@ -109,6 +109,14 @@ router.post("/", auth, validateChat, async (req: Request, res: Response) => {
         existingChat.members.some((m) => m.userId === userId) &&
         existingChat.members.some((m) => m.userId === memberIds[0])
       ) {
+        try {
+          const io = getIO();
+          const participantIds = existingChat.members.map((m) => m.userId);
+          participantIds
+            .filter((id) => id !== userId)
+            .forEach((id) => io.to(`user:${id}`).emit("chat:created", existingChat));
+        } catch (e) {
+        }
         return res.json({
           success: true,
           data: existingChat,
