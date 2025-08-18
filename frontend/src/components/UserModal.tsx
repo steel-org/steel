@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { User } from "../types";
 import { useChatStore } from "@/stores/chatStore";
+import { apiService } from "@/services/api";
 
 interface UserModalProps {
   user: User;
@@ -102,27 +103,10 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
   };
 
   const uploadAvatarToServer = async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append("avatar", file);
-
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/upload/avatar`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("biuld-token")}`,
-          },
-          body: formData,
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Upload failed");
-      }
-
-      const data = await response.json();
-      return data.avatarUrl;
+      // Use shared API service which attaches the correct token
+      const url = await apiService.uploadAvatar(file);
+      return url;
     } catch (error) {
       console.error("Avatar upload failed:", error);
       throw error;
@@ -141,30 +125,18 @@ const UserModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) => {
         finalAvatar = generateAvatar();
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/${user?.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("biuld-token")}`,
-        },
-        body: JSON.stringify({
-          username,
-          displayName,
-          bio,
-          location: "",
-          website: "",
-          avatar: avatar || null,
-        }),
+      // Persist full profile via API service (handles token + base URL)
+      const updated = await apiService.updateProfile({
+        username,
+        displayName,
+        bio,
+        location: "",
+        website: "",
+        avatar: finalAvatar || undefined,
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to update profile");
-      }
-
       // Update the current user in the store
-      useChatStore.getState().setCurrentUser(result.data);
+      useChatStore.getState().setCurrentUser(updated as any);
 
       // Show success message
       alert("Profile updated successfully");

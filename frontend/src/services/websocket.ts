@@ -309,6 +309,7 @@ class WebSocketService {
     replyToId?: string;
     language?: string;
     filename?: string;
+    attachments?: Array<{ url: string; originalName: string; mimeType: string; size: number; thumbnail?: string | null }>;
   }): void {
     if (!this.socket) {
       console.error('WebSocket not connected');

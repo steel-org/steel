@@ -216,7 +216,14 @@ class ApiService {
     return response.data!;
   }
 
-  async updateProfile(data: { username?: string; avatar?: string }): Promise<User> {
+  async updateProfile(data: { 
+    username?: string; 
+    avatar?: string; 
+    displayName?: string; 
+    bio?: string; 
+    location?: string; 
+    website?: string; 
+  }): Promise<User> {
     const response = await this.request<User>('/api/users/profile', {
       method: 'PUT',
       body: JSON.stringify(data),

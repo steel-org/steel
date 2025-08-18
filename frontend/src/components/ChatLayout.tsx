@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useChatStore } from "@/stores/chatStore";
 import { apiService } from "@/services/api";
 import { wsService } from "@/services/websocket";
@@ -32,6 +32,7 @@ export default function ChatLayout() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+   const creatingDMWithRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     // Check if user is already authenticated
@@ -77,6 +78,20 @@ export default function ChatLayout() {
       };
     }
   }, [currentUser, selectedChat]);
+
+  // Load messages when a chat is selected or changes
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (!selectedChat) return;
+      try {
+        const res = await apiService.getMessages(selectedChat.id, 1, 50);
+        setMessages(selectedChat.id, res.messages || []);
+      } catch (err) {
+        console.error('Failed to load messages for chat', selectedChat.id, err);
+      }
+    };
+    loadMessages();
+  }, [selectedChat?.id]);
 
   const loadCurrentUser = async () => {
     try {
@@ -331,6 +346,12 @@ export default function ChatLayout() {
     console.log('Starting new conversation with user:', userId);
 
     try {
+      if (creatingDMWithRef.current.has(userId)) {
+        console.warn('Chat creation already in progress for user:', userId);
+        return;
+      }
+      creatingDMWithRef.current.add(userId);
+
       // Find an existing DIRECT chat between current user and the target user
       const existingChat = chats.find((chat) => {
         if (chat.type !== 'DIRECT') return false;
@@ -360,11 +381,29 @@ export default function ChatLayout() {
       
     } catch (error) {
       console.error('Error creating chat:', error);
-      alert('Failed to create chat. Please try again or contact support.');
+      try {
+        const latestChats = await apiService.getChats();
+        useChatStore.getState().setChats(latestChats);
+        const fallback = latestChats.find((chat) => {
+          if (chat.type !== 'DIRECT') return false;
+          const ids = (chat.members || []).map((m: any) => (m as any).userId || m.user?.id);
+          return ids.includes(userId) && ids.includes(currentUser!.id);
+        });
+        if (fallback) {
+          console.log('Routing to existing chat after failure:', fallback.id);
+          setSelectedChat(fallback);
+          return;
+        }
+      } catch (e) {
+        console.warn('Failed to recover chats after create error:', e);
+      }
+      alert('Failed to create or locate chat. Please try again.');
+    } finally {
+      creatingDMWithRef.current.delete(userId);
     }
   };
 
-  const sendMessage = (text: string, type = "text") => {
+  const sendMessage = (text: string, type = "text", attachment?: any) => {
     if (!text.trim()) {
       console.warn('Attempted to send empty message');
       return;
@@ -387,14 +426,19 @@ export default function ChatLayout() {
       isReply: !!replyingTo
     });
 
-    const messageData = {
+    // Normalize type to backend enum casing
+    const normalizedType = (type || 'text').toUpperCase();
+    const messageData: any = {
       chatId: selectedChat.id,
       content: text,
-      type,
+      type: normalizedType,
       ...(replyingTo && {
         replyToId: replyingTo.id,
       }),
     };
+    if (attachment) {
+      messageData.attachments = [attachment];
+    }
     
     wsService.sendMessage(messageData);
     setReplyingTo(null);
@@ -406,12 +450,21 @@ export default function ChatLayout() {
       id: tempId,
       chatId: selectedChat.id,
       content: text,
-      type: type as any, 
+      type: normalizedType as any,
       status: 'SENT', 
       sender: currentUser,
       createdAt: now,
       updatedAt: now,
-      attachments: [],
+      attachments: attachment ? [{
+        id: `temp-att-${Date.now()}`,
+        filename: attachment.originalName || attachment.filename || 'file',
+        originalName: attachment.originalName || attachment.filename || 'file',
+        mimeType: attachment.mimeType || 'application/octet-stream',
+        size: attachment.size || 0,
+        url: attachment.url,
+        thumbnail: attachment.thumbnail || null,
+        createdAt: now,
+      }] : [],
       reactions: [],
       ...(replyingTo && { replyTo: replyingTo }),
     };

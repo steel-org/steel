@@ -6,7 +6,6 @@ import compression from "compression";
 import rateLimit from "express-rate-limit";
 import { Server } from "socket.io";
 import dotenv from "dotenv";
-import path from "path";
 
 import { setupRoutes } from "./routes";
 import { setupWebSocket } from "./websocket";
@@ -73,18 +72,18 @@ app.get("/api/health", (req, res) => {
   res.json({
     success: true,
     message: "Server is running",
-    version: "4.1.0",
+    version: "4.1.1",
     timestamp: new Date().toISOString(),
   });
 });
 
-// Error handling middleware (must be last)
+// Error handling middleware
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
 server.listen(Number(PORT), "0.0.0.0", () => {
-  logger.info(`🚀 Biuld Backend v4.1.0 running on port ${PORT}`);
+  logger.info(`🚀 Biuld Backend v4.1.1 running on port ${PORT}`);
   logger.info(`📡 Socket.io server ready for connections`);
   logger.info(`🌐 Health check: http://localhost:${PORT}/api/health`);
   logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);

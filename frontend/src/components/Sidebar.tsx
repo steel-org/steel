@@ -99,17 +99,20 @@ export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
       ?.filter(member => member.user?.id !== currentUser?.id)
       .map(member => member.user?.username)
       .join(', ');
+    const otherUser = !isGroup 
+      ? chat.members?.find(m => m.user?.id !== currentUser?.id)?.user 
+      : undefined;
     
     const lastMessage = chat.messages?.[0];
     const isSelected = selectedChat?.id === chat.id;
-    const lastMessageTime = chat.lastMessage 
+    const lastMessageTime = chat.lastMessageAt
       ? formatDistanceToNow(
-          typeof chat.lastMessage === 'string' 
-            ? new Date(chat.lastMessage) 
-            : chat.lastMessage, 
-          { addSuffix: true }
-        )
-      : null;
+       chat.lastMessageAt instanceof Date
+        ? chat.lastMessageAt
+        : new Date(chat.lastMessageAt),
+        { addSuffix: true }
+      )
+    : null;
 
     return (
       <div
@@ -119,13 +122,29 @@ export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
       >
         <div className="relative">
           {isGroup ? (
-            <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white">
-              <Users size={18} />
-            </div>
+            chat.avatar ? (
+              <img
+                src={chat.avatar}
+                alt={chatName || 'Group'}
+                className="w-10 h-10 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white">
+                <Users size={18} />
+              </div>
+            )
           ) : (
-            <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-white">
-              <UserIcon size={18} />
-            </div>
+            otherUser?.avatar ? (
+              <img
+                src={otherUser.avatar}
+                alt={otherUser.username}
+                className="w-10 h-10 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-white text-sm">
+                {(otherUser?.username?.[0] || 'U').toUpperCase()}
+              </div>
+            )
           )}
           {!isGroup && chat.members?.some(m => m.user?.status === 'online' && m.user.id !== currentUser?.id) && (
             <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-800"></div>

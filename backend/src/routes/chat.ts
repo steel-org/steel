@@ -78,49 +78,69 @@ router.post("/", auth, validateChat, async (req: Request, res: Response) => {
     const { name, type, memberIds } = req.body;
 
     if (type === "DIRECT") {
-      // For direct chats, check if chat already exists
-      const existingChat = await prisma.chat.findFirst({
-        where: {
-          type: "DIRECT",
-          AND: [
-            { members: { some: { userId } } },
-            { members: { some: { userId: memberIds[0] } } }
-          ],
-        },
+      const targetId = Array.isArray(memberIds) ? memberIds[0] : undefined;
+      if (!targetId) {
+        return res.status(400).json({ success: false, error: "memberIds[0] is required for DIRECT chat" });
+      }
+
+      const [a, b] = userId < targetId ? [userId, targetId] : [targetId, userId];
+      const directKey = `${a}:${b}`;
+
+      const existingByKey = await prisma.chat.findFirst({
+        where: { directKey },
         include: {
-          members: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  username: true,
-                  avatar: true,
-                },
-              },
-            },
-          },
+          members: { include: { user: { select: { id: true, username: true, avatar: true, status: true, lastSeen: true } } } },
+          owner: { select: { id: true, username: true } },
         },
       });
-
-      // Ensure the found DIRECT chat is exactly between the two users
-      if (
-        existingChat &&
-        existingChat.members.length === 2 &&
-        existingChat.members.some((m) => m.userId === userId) &&
-        existingChat.members.some((m) => m.userId === memberIds[0])
-      ) {
+      if (existingByKey) {
         try {
           const io = getIO();
-          const participantIds = existingChat.members.map((m) => m.userId);
-          participantIds
-            .filter((id) => id !== userId)
-            .forEach((id) => io.to(`user:${id}`).emit("chat:created", existingChat));
-        } catch (e) {
-        }
-        return res.json({
-          success: true,
-          data: existingChat,
+          const participantIds = existingByKey.members.map((m) => m.userId);
+          participantIds.filter((id) => id !== userId).forEach((id) => io.to(`user:${id}`).emit("chat:created", existingByKey));
+        } catch {}
+        return res.json({ success: true, data: existingByKey });
+      }
+
+      try {
+        const created = await prisma.chat.create({
+          data: {
+            type: "DIRECT",
+            directKey,
+            members: {
+              create: [
+                { userId, role: "MEMBER" },
+                { userId: targetId, role: "MEMBER" },
+              ],
+            },
+          },
+          include: {
+            members: { include: { user: { select: { id: true, username: true, avatar: true, status: true, lastSeen: true } } } },
+            owner: { select: { id: true, username: true } },
+          },
         });
+
+        try {
+          const io = getIO();
+          const participantIds = created.members.map((m) => m.userId);
+          participantIds.filter((id) => id !== userId).forEach((id) => io.to(`user:${id}`).emit("chat:created", created));
+        } catch (e) {
+          console.error("Failed to emit chat:created", e);
+        }
+
+        return res.status(201).json({ success: true, data: created });
+      } catch (e: any) {
+        if (e?.code === "P2002") {
+          const current = await prisma.chat.findFirst({
+            where: { directKey },
+            include: {
+              members: { include: { user: { select: { id: true, username: true, avatar: true, status: true, lastSeen: true } } } },
+              owner: { select: { id: true, username: true } },
+            },
+          });
+          if (current) return res.json({ success: true, data: current });
+        }
+        throw e;
       }
     }
 
@@ -173,7 +193,7 @@ router.post("/", auth, validateChat, async (req: Request, res: Response) => {
         .filter((id) => id !== userId)
         .forEach((id) => io.to(`user:${id}`).emit("chat:created", chat));
     } catch (e) {
-      // If io not initialized, continue without blocking API response
+      console.error("Failed to emit chat:created", e);
     }
 
     return res.status(201).json({

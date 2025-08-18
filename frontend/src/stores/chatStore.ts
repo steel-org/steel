@@ -106,7 +106,26 @@ export const useChatStore = create<ChatState>()(
         selectedChat: null,
         setChats: (chats) => {
           console.log('Setting chats:', chats.map(c => ({ id: c.id, name: c.name || 'Direct Message' })));
-          return { chats };
+          const map = new Map<string, any>();
+          const result: any[] = [];
+          for (const c of chats) {
+            if (c.type === 'DIRECT' && Array.isArray(c.members)) {
+              const ids = c.members.map((m: any) => m.user?.id || m.userId).filter(Boolean).sort();
+              const key = `DIRECT:${ids.join('-')}`;
+              const prev = map.get(key);
+              const prevTime = prev ? new Date(prev.updatedAt || prev.createdAt || 0).getTime() : -1;
+              const curTime = new Date(c.updatedAt || c.createdAt || 0).getTime();
+              if (!prev) {
+                map.set(key, c);
+              } else if (curTime >= prevTime) {
+                map.set(key, c);
+              }
+            } else {
+              result.push(c);
+            }
+          }
+          for (const v of map.values()) result.push(v);
+          return { chats: result };
         },
         addChat: (chat) => set((state) => {
           console.log('Adding chat:', { 
@@ -115,8 +134,17 @@ export const useChatStore = create<ChatState>()(
             members: chat.members?.map(m => m.user?.username || 'Unknown User')
           });
           
-          const existingChats = state.chats.filter(c => c.id !== chat.id);
-          return { chats: [...existingChats, chat] };
+          let next = state.chats.filter(c => c.id !== chat.id);
+          if (chat.type === 'DIRECT' && Array.isArray(chat.members)) {
+            const idsNew = chat.members.map((m: any) => m.user?.id || m.userId).filter(Boolean).sort();
+            const keyNew = idsNew.join('-');
+            next = next.filter(c => {
+              if (c.type !== 'DIRECT') return true;
+              const ids = (c.members || []).map((m: any) => m.user?.id || m.userId).filter(Boolean).sort();
+              return ids.join('-') !== keyNew;
+            });
+          }
+          return { chats: [...next, chat] };
         }),
         updateChat: (chatId, updates) => set((state) => ({
           chats: state.chats.map(chat => 

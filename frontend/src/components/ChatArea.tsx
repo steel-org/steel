@@ -85,8 +85,8 @@ export default function ChatArea({
         formData.append('chatId', selectedChat.id);
       }
       
-      // Use the API service to upload the file
-      const response = await fetch('/api/files/upload', {
+      // Upload the file 
+      const response = await fetch('/api/upload/chat-file', {
         method: 'POST',
         body: formData,
         headers: {
@@ -99,7 +99,18 @@ export default function ChatArea({
         throw new Error(errorData.error || 'Failed to upload file');
       }
 
-      const { data: attachment } = await response.json();
+      const { data } = await response.json();
+      
+      // Normalize attachment for downstream usage
+      const attachment = {
+        url: data.url,
+        originalName: data.originalName,
+        mimeType: data.type,
+        size: data.size,
+        thumbnail: null as string | null,
+        // keep extra fields in case UI needs them
+        path: data.path,
+      };
       
       // Send a message with the file attachment
       onSendMessage(attachment.originalName, 'file', attachment);

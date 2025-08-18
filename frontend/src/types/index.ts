@@ -22,7 +22,8 @@ export interface Chat {
   avatar?: string;
   createdAt: string;
   updatedAt: string;
-  lastMessage?: string | Date;
+  lastMessage?: string;
+  lastMessageAt?: string | Date;
   messages?: Message[];
   members: ChatMember[];
   participants: string[]; 
