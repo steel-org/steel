@@ -41,12 +41,13 @@ model User {
 model Chat {
   id          String    @id @default(cuid())
   name        String?
-  type        ChatType  @default(DIRECT)
+  type        ChatType
   avatar      String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   lastMessage DateTime?
 
+  directKey  String?      @unique
   // Relations
   messages Message[]
   members  ChatMember[]

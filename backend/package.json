@@ -1,6 +1,6 @@
 {
   "name": "biuld-backend",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "description": "Modern chat backend for biuld developer tool",
   "main": "dist/index.js",
   "scripts": {

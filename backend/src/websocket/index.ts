@@ -133,6 +133,7 @@ export const setupWebSocket = (io: Server) => {
       replyToId?: string;
       language?: string;
       filename?: string;
+      attachments?: Array<{ url: string; originalName: string; mimeType: string; size: number; thumbnail?: string | null }>;
     }) => {
       try {
         if (!socket.userId) return;
@@ -152,15 +153,42 @@ export const setupWebSocket = (io: Server) => {
         const isParticipant = chat.members.some((m) => m.userId === socket.userId);
         if (!isParticipant) return;
 
-        // Persist message
-        const message = await prisma.message.create({
+        // Persist message first
+        const created = await prisma.message.create({
           data: {
             chatId,
             content,
             type: type as any,
             senderId: socket.userId,
             replyToId: replyToId || null,
+            ...(data.language ? { language: data.language } : {}),
+            ...(data.filename ? { filename: data.filename } : {}),
           },
+        });
+
+        // Persist attachments if provided
+        if (Array.isArray(data.attachments) && data.attachments.length > 0) {
+          for (const att of data.attachments) {
+            try {
+              await prisma.attachment.create({
+                data: {
+                  filename: att.originalName,
+                  originalName: att.originalName,
+                  mimeType: att.mimeType,
+                  size: Math.max(0, Number(att.size) || 0),
+                  url: att.url,
+                  thumbnail: att.thumbnail || null,
+                  messageId: created.id,
+                },
+              });
+            } catch (e) {
+              console.error("Failed to create attachment for message", created.id, e);
+            }
+          }
+        }
+
+        const message = await prisma.message.findUnique({
+          where: { id: created.id },
           include: {
             sender: {
               select: { id: true, username: true, avatar: true },
@@ -184,10 +212,12 @@ export const setupWebSocket = (io: Server) => {
         });
 
         // Broadcast to all participants via per-user rooms
-        const participantIds = chat.members.map((m) => m.userId);
-        for (const uid of participantIds) {
-          io.to(`user:${uid}`).emit("message_received", { message });
-          io.to(`user:${uid}`).emit("new_message", message);
+        if (message) {
+          const participantIds = chat.members.map((m) => m.userId);
+          for (const uid of participantIds) {
+            io.to(`user:${uid}`).emit("message_received", { message });
+            io.to(`user:${uid}`).emit("new_message", message);
+          }
         }
       } catch (err) {
         console.error("Error handling send_message:", err);

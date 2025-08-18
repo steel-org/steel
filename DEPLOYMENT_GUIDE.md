@@ -1,4 +1,4 @@
-# 🚀 Biuld v4.1.0 - Production Deployment Guide
+# 🚀 Biuld v4.1.1 - Production Deployment Guide
 
 ## Table of Contents
 
@@ -15,7 +15,7 @@
 
 ## Overview
 
-This guide provides step-by-step instructions for deploying Biuld v4.1.0 to production environments. This version represents a major milestone with production-ready features including real-time messaging, code sharing, file uploads, and comprehensive deployment guides.
+This guide provides step-by-step instructions for deploying Biuld v4.1.1 to production environments. This version represents a major milestone with production-ready features including real-time messaging, code sharing, file uploads, and comprehensive deployment guides.
 
 The application consists of:
 
@@ -216,7 +216,7 @@ After initial deployment, configure environment variables:
 # API Configuration
 NEXT_PUBLIC_API_URL="https://your-backend-url.railway.app"
 NEXT_PUBLIC_WS_URL="wss://your-backend-url.railway.app"
-NEXT_PUBLIC_APP_NAME="Steel"
+NEXT_PUBLIC_APP_NAME="biuld"
 
 # Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url

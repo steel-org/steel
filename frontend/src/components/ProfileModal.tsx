@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Mail, Calendar, MapPin, Link as LinkIcon, Edit2, Save, X as XIcon, User as UserIcon, Globe, MapPin as MapPinIcon, PenTool } from 'lucide-react';
 import { User } from '@/types';
 import { useChatStore } from '@/stores/chatStore';
+import { apiService } from '@/services/api';
 import AvatarUpload from './AvatarUpload';
 
 const formatLastSeen = (lastSeen?: string | Date): string => {
@@ -41,7 +42,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedUser, setEditedUser] = useState<User>({ ...initialUser });
-  const { updateUser, currentUser } = useChatStore();
+  const { updateUser, currentUser, setCurrentUser } = useChatStore();
 
   useEffect(() => {
     setEditedUser({ ...initialUser });
@@ -59,17 +60,22 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
 
   const handleSave = async () => {
     try {
-      if (currentUser) {
-        await updateUser(currentUser.id, {
-          displayName: editedUser.displayName,
-          bio: editedUser.bio,
-          location: editedUser.location,
-          website: editedUser.website
-        });
-        setIsEditing(false);
-      }
+      if (!currentUser) return;
+      // Persist to backend
+      const updated = await apiService.updateProfile({
+        displayName: editedUser.displayName,
+        bio: editedUser.bio,
+        location: editedUser.location,
+        website: editedUser.website,
+        avatar: editedUser.avatar,
+      });
+      // Update store (currentUser and users list)
+      setCurrentUser(updated);
+      updateUser(updated.id, updated);
+      setIsEditing(false);
     } catch (error) {
       console.error('Failed to update profile:', error);
+      alert(error instanceof Error ? error.message : 'Failed to update profile');
     }
   };
 
