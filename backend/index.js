@@ -13,7 +13,7 @@ const io = socketIo(server, {
     origin:
       process.env.NODE_ENV === "production"
         ? ["https://biuld.vercel.app"]
-        : ["http://localhost:3000"],
+        : ["http://localhost:3000", "https://g17zp77p-3000.eun1.devtunnels.ms/"],
     methods: ["GET", "POST"],
   },
 });

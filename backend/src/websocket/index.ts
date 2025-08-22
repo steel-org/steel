@@ -3,6 +3,7 @@ import { Server, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 import { logger } from "../utils/logger";
 import { PrismaClient } from "@prisma/client";
+import { sendPushToSubscription } from "../utils/push";
 
 const prisma = new PrismaClient();
 
@@ -125,6 +126,50 @@ export const setupWebSocket = (io: Server) => {
       }
     });
 
+    // Handle read receipts for a batch of messages in a chat
+    socket.on("mark_read", async (data: { chatId: string; messageIds: string[] }) => {
+      try {
+        if (!socket.userId) return;
+        const { chatId, messageIds } = data || {} as any;
+        if (!chatId || !Array.isArray(messageIds) || messageIds.length === 0) return;
+
+        // Verify membership
+        const chat = await prisma.chat.findUnique({
+          where: { id: chatId },
+          include: { members: { select: { userId: true } } },
+        });
+        if (!chat) return;
+        const isParticipant = chat.members.some((m) => m.userId === socket.userId);
+        if (!isParticipant) return;
+
+        // Only mark as READ for messages in this chat that were NOT sent by this user
+        const messages = await prisma.message.findMany({
+          where: {
+            id: { in: messageIds },
+            chatId,
+            senderId: { not: socket.userId },
+          },
+          select: { id: true },
+        });
+        const validIds = messages.map((m) => m.id);
+        if (validIds.length === 0) return;
+
+        await prisma.message.updateMany({
+          where: { id: { in: validIds } },
+          data: { status: 'READ' },
+        });
+
+        // Emit status to all participants so UIs update consistently
+        for (const mId of validIds) {
+          for (const member of chat.members) {
+            io.to(`user:${member.userId}`).emit("message_status", { messageId: mId, status: 'READ' });
+          }
+        }
+      } catch (err) {
+        console.error('Error handling mark_read:', err);
+      }
+    });
+
     // New unified chat message handler
     socket.on("send_message", async (data: {
       chatId: string;
@@ -133,7 +178,18 @@ export const setupWebSocket = (io: Server) => {
       replyToId?: string;
       language?: string;
       filename?: string;
-      attachments?: Array<{ url: string; originalName: string; mimeType: string; size: number; thumbnail?: string | null }>;
+      attachments?: Array<{
+        url: string;
+        originalName: string;
+        mimeType: string;
+        size: number;
+        thumbnail?: string | null;
+        // storage metadata from upload response
+        path?: string;                // e.g., "chat-files/<userId>/<file>"
+        storageKey?: string;          // alias for path
+        storageBucket?: string;       // override bucket if provided
+        storageProvider?: string;     // e.g., "supabase"
+      }>;
     }) => {
       try {
         if (!socket.userId) return;
@@ -170,6 +226,10 @@ export const setupWebSocket = (io: Server) => {
         if (Array.isArray(data.attachments) && data.attachments.length > 0) {
           for (const att of data.attachments) {
             try {
+              const storageProvider = att.storageProvider || 'supabase';
+              const storageBucket = att.storageBucket || process.env.SUPABASE_BUCKET || null;
+              const storageKey = att.storageKey || att.path || null;
+
               await prisma.attachment.create({
                 data: {
                   filename: att.originalName,
@@ -179,6 +239,9 @@ export const setupWebSocket = (io: Server) => {
                   url: att.url,
                   thumbnail: att.thumbnail || null,
                   messageId: created.id,
+                  ...(storageProvider ? { storageProvider } : {}),
+                  ...(storageBucket ? { storageBucket } : {}),
+                  ...(storageKey ? { storageKey } : {}),
                 },
               });
             } catch (e) {
@@ -211,12 +274,45 @@ export const setupWebSocket = (io: Server) => {
           data: { lastMessage: new Date() },
         });
 
-        // Broadcast to all participants via per-user rooms
+        // Broadcast to all participants via per-user rooms (single event to prevent duplication)
         if (message) {
           const participantIds = chat.members.map((m) => m.userId);
           for (const uid of participantIds) {
             io.to(`user:${uid}`).emit("message_received", { message });
-            io.to(`user:${uid}`).emit("new_message", message);
+          }
+          // Fire-and-forget push notifications to all other participants.
+          // The Service Worker will decide whether to surface UI based on client visibility.
+          try {
+            const targetIds = participantIds.filter((uid) => uid !== socket.userId);
+            if (targetIds.length > 0) {
+              for (const uid of targetIds) {
+                const subs = await prisma.pushSubscription.findMany({ where: { userId: uid } });
+                for (const sub of subs) {
+                  try {
+                    await sendPushToSubscription(
+                      {
+                        endpoint: sub.endpoint,
+                        keys: { p256dh: sub.p256dh, auth: sub.auth },
+                      },
+                      {
+                        title: message.sender?.username ? `${message.sender.username}` : 'New message',
+                        body: message.content?.slice(0, 140) || 'You have a new message',
+                        data: { url: process.env.CORS_ORIGIN || 'http://localhost:3000', chatId: message.chatId },
+                      }
+                    );
+                  } catch (e: any) {
+                    if (e?.code === 404 || e?.code === 410) {
+                      // Cleanup stale subscription
+                      await prisma.pushSubscription.deleteMany({ where: { endpoint: sub.endpoint } });
+                    } else {
+                      console.warn('Failed to send push', e);
+                    }
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('Push notification dispatch failed', e);
           }
         }
       } catch (err) {
@@ -308,6 +404,64 @@ export const setupWebSocket = (io: Server) => {
       }
     });
 
+    // Handle message reactions (toggle per user/message/reaction)
+    socket.on("react_to_message", async (data: { messageId: string; reaction: string }) => {
+      try {
+        if (!socket.userId) return;
+        const { messageId, reaction } = data || ({} as any);
+        if (!messageId || !reaction) return;
+
+        // Load message with chat and members
+        const message = await prisma.message.findUnique({
+          where: { id: messageId },
+          include: {
+            chat: { include: { members: { select: { userId: true, user: { select: { username: true } } } } } },
+          },
+        });
+        if (!message || !message.chat) return;
+
+        // Verify participant
+        const isParticipant = message.chat.members.some((m) => m.userId === socket.userId);
+        if (!isParticipant) return;
+
+        // Toggle reaction
+        const existing = await prisma.messageReaction.findUnique({
+          where: {
+            userId_messageId_reaction: {
+              userId: socket.userId,
+              messageId: messageId,
+              reaction,
+            },
+          },
+        });
+
+        if (existing) {
+          await prisma.messageReaction.delete({ where: { id: existing.id } });
+        } else {
+          await prisma.messageReaction.create({
+            data: { userId: socket.userId, messageId, reaction },
+          });
+        }
+
+        // Emit to all participants in the chat
+        const me = message.chat.members.find((m) => m.userId === socket.userId);
+        const username = me?.user?.username || "";
+        for (const m of message.chat.members) {
+          const payload = {
+            chatId: message.chatId,
+            messageId,
+            reaction,
+            userId: socket.userId,
+            username,
+            toggledOff: !!existing,
+          } as any;
+          io.to(`user:${m.userId}`).emit("message_reaction", payload);
+        }
+      } catch (err) {
+        console.error("Error handling react_to_message:", err);
+      }
+    });
+
     // Handle code snippet sharing
     socket.on("codeSnippet", (snippetData: {
       recipientId: string;
@@ -348,13 +502,13 @@ export const setupWebSocket = (io: Server) => {
       }
     });
 
-    // Handle message deletion
+    // Handle message deletion (delete for me vs delete for everyone)
     socket.on("delete_message", async (data: {
       messageId: string;
       chatId: string;
       deleteForEveryone?: boolean;
     }) => {
-      const { messageId, chatId } = data;
+      const { messageId, chatId, deleteForEveryone = false } = data;
       const userId = socket.userId;
       if (!userId) return;
 
@@ -363,10 +517,8 @@ export const setupWebSocket = (io: Server) => {
           where: { id: messageId },
           include: { 
             chat: {
-              include: {
-                members: true
-              }
-            } 
+              include: { members: true }
+            }
           }
         });
 
@@ -374,29 +526,40 @@ export const setupWebSocket = (io: Server) => {
           console.log('Message or chat not found');
           return;
         }
-        
+
         const isParticipant = messageWithChat.chat.members.some(member => member.userId === userId);
         if (!isParticipant) {
           console.log('User is not a participant in this chat');
           return;
         }
 
-        if (messageWithChat.senderId !== userId) {
-          console.log('User is not the sender of this message');
-          return;
-        }
-
-        await prisma.message.delete({ where: { id: messageId } });
-
-        const participants = await prisma.chat.findUnique({
-          where: { id: chatId },
-          select: { members: { select: { userId: true } } }
-        });
-
-        if (participants) {
-          for (const m of participants.members) {
-            io.to(`user:${m.userId}`).emit("message_deleted", { messageId, chatId });
+        // Only the sender may delete for everyone. Anyone can delete for self.
+        if (deleteForEveryone) {
+          if (messageWithChat.senderId !== userId) {
+            console.log('User is not the sender; cannot delete for everyone');
+            return;
           }
+
+          await prisma.message.delete({ where: { id: messageId } });
+
+          const participants = await prisma.chat.findUnique({
+            where: { id: chatId },
+            select: { members: { select: { userId: true } } }
+          });
+
+          if (participants) {
+            for (const m of participants.members) {
+              io.to(`user:${m.userId}`).emit("message_deleted", { messageId, chatId, deletedForEveryone: true });
+            }
+          }
+        } else {
+          // Delete for me: mark relation so this user no longer sees it; do not affect others
+          await prisma.message.update({
+            where: { id: messageId },
+            data: { deletedFor: { connect: { id: userId } } }
+          });
+          // Emit only to this user's room so their client removes it
+          io.to(`user:${userId}`).emit("message_deleted", { messageId, chatId, deletedForEveryone: false });
         }
       } catch (error) {
         console.error('Error in deleteMessage handler:', error);

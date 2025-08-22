@@ -1,4 +1,4 @@
-# 🚀 Biuld v4.1.1 - Production Deployment Guide
+# 🚀 Biuld v4.2.0 - Production Deployment Guide
 
 ## Table of Contents
 
@@ -15,7 +15,7 @@
 
 ## Overview
 
-This guide provides step-by-step instructions for deploying Biuld v4.1.1 to production environments. This version represents a major milestone with production-ready features including real-time messaging, code sharing, file uploads, and comprehensive deployment guides.
+This guide provides step-by-step instructions for deploying Biuld v4.2.0 to production environments. This version represents a major milestone with production-ready features including real-time messaging, code sharing, file uploads, and comprehensive deployment guides.
 
 The application consists of:
 
@@ -78,6 +78,7 @@ Railway is the recommended backend hosting platform due to its:
 3. The `REDIS_URL` environment variable is automatically added
 
 ### Note: we will now be using supabase as the postgres
+
 check the [SUPABASE_SETUP.md](SUPABASE_SETUP.md) for more details
 
 #### 5. Security Configuration
@@ -252,13 +253,13 @@ NEXT_PUBLIC_ENABLE_NOTIFICATIONS=true
 
 ### Frontend Environment Variables
 
-| Variable               | Description          | Required | Example                    |
-| ---------------------- | -------------------- | -------- | -------------------------- |
-| `NEXT_PUBLIC_API_URL`  | Backend API endpoint | Yes      | Your Railway URL           |
-| `NEXT_PUBLIC_WS_URL`   | WebSocket endpoint   | Yes      | Your Railway WebSocket URL |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase URL | Yes | Your Supabase URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Anon Key | Yes | Your Supabase Anon Key |
-| `NEXT_PUBLIC_APP_NAME` | Application name     | No       | `Steel Chat`               |
+| Variable                        | Description          | Required | Example                    |
+| ------------------------------- | -------------------- | -------- | -------------------------- |
+| `NEXT_PUBLIC_API_URL`           | Backend API endpoint | Yes      | Your Railway URL           |
+| `NEXT_PUBLIC_WS_URL`            | WebSocket endpoint   | Yes      | Your Railway WebSocket URL |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase URL         | Yes      | Your Supabase URL          |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Anon Key    | Yes      | Your Supabase Anon Key     |
+| `NEXT_PUBLIC_APP_NAME`          | Application name     | No       | `Biuld Chat`               |
 
 ## Database Setup
 

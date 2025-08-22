@@ -49,6 +49,23 @@ class WebSocketService {
         reconnectionDelay: 1000,
       });
 
+    // Message edited events
+    this.socket.on('message_edited', (data: { message: any }) => {
+      try {
+        const updated = data?.message;
+        if (updated?.id && updated?.chatId) {
+          useChatStore.getState().updateMessage(updated.chatId, updated.id, {
+            content: updated.content,
+            editedAt: updated.editedAt,
+          });
+          // Re-emit for any UI listeners
+          this.emit('messageEdited', updated);
+        }
+      } catch (err) {
+        console.error('Failed to handle message_edited event', err);
+      }
+    });
+
       this.socket.on('connect', () => {
         console.log('Connected to WebSocket server');
         this.reconnectAttempts = 0;
@@ -207,7 +224,7 @@ class WebSocketService {
       }
     });
 
-    // Message events
+    // Message events (single unified event)
     this.socket.on('message_received', (data: MessageEvent) => {
       console.log('Message received:', {
         messageId: data.message?.id,
@@ -217,24 +234,76 @@ class WebSocketService {
       });
       this.emit('messageReceived', data);
       useChatStore.getState().handleMessageReceived?.(data);
-    });
 
-    this.socket.on('new_message', (data: any) => {
-      console.log('New message event:', {
-        messageId: data.id,
-        chatId: data.chatId,
-        sender: data.sender?.username,
-        content: data.content?.substring(0, 50) + '...'
-      });
-      this.emit('newMessage', data);
+      // Try showing a browser notification if user allowed it and tab isn't focused
+      try {
+        const canNotify = typeof window !== 'undefined' && 'Notification' in window;
+        const me = useChatStore.getState().currentUser;
+        const isFromMe = !!(data.message?.sender?.id && me?.id && data.message.sender.id === me.id);
+        if (
+          canNotify &&
+          Notification.permission === 'granted' &&
+          typeof document !== 'undefined' &&
+          !document.hasFocus() &&
+          !isFromMe
+        ) {
+          const title = data.message?.sender?.username || 'New message';
+          const body = (data.message?.content || '').slice(0, 120) || 'New message received';
+          const icon = '/favicon.ico';
+          const chatId = data.message?.chatId;
+          const n = new Notification(title, { body, icon });
+          // Focus and deep-link to the chat on click
+          n.onclick = () => {
+            try { window.focus(); } catch {}
+            try {
+              if (chatId) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('chatId', chatId);
+                // Prefer SPA navigation if available
+                if ((window as any).next && (window as any).next.router) {
+                  try {
+                    (window as any).next.router.push({ pathname: url.pathname, query: Object.fromEntries(url.searchParams.entries()) });
+                  } catch {
+                    window.history.pushState({}, '', url.toString());
+                    window.dispatchEvent(new PopStateEvent('popstate'));
+                  }
+                } else {
+                  window.history.pushState({}, '', url.toString());
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                }
+              }
+            } catch {}
+            n.close();
+          };
+        }
+      } catch (e) {
+        console.warn('Failed to show notification', e);
+      }
     });
 
     this.socket.on('message_status', (data: { messageId: string; status: string }) => {
+      try {
+        const status = (data.status || '').toUpperCase();
+        if (status === 'SENT' || status === 'DELIVERED' || status === 'READ') {
+          useChatStore.getState().updateMessageStatus(data.messageId, status as any);
+        }
+      } catch (err) {
+        console.error('Failed processing message_status', err);
+      }
       this.emit('messageStatusUpdate', data);
     });
 
-    this.socket.on('message_deleted', (data: { messageId: string }) => {
+    this.socket.on('message_deleted', (data: { messageId: string; chatId: string; deletedForEveryone?: boolean }) => {
       this.emit('messageDeleted', data);
+      try {
+        useChatStore.getState().handleMessageDeleted?.({
+          messageId: data.messageId,
+          chatId: data.chatId,
+          deletedForEveryone: !!data.deletedForEveryone
+        } as any);
+      } catch (err) {
+        console.error('Failed to handle message_deleted event in store', err);
+      }
     });
 
     // Typing events
@@ -257,12 +326,19 @@ class WebSocketService {
 
     this.socket.on('user_offline', (data: { userId: string; username: string }) => {
       this.emit('userLeft', data);
-      useChatStore.getState().handleUserStatusChange?.(data.userId, 'offline');
+      try {
+        // Update status and lastSeen to now for accurate presence display
+        useChatStore.getState().updateUser(data.userId, {
+          status: 'offline',
+          lastSeen: new Date().toISOString(),
+        } as any);
+      } catch (e) {
+        // Fallback to handler if custom update fails
+        useChatStore.getState().handleUserStatusChange?.(data.userId, 'offline');
+      }
     });
 
-    this.socket.on('users', (data: any[]) => {
-      this.emit('users', data);
-    });
+    // Note: 'users' is already handled above and re-emitted once
 
     // Chat events
     this.socket.on('joined_chat', (data: { chatId: string }) => {
@@ -326,8 +402,42 @@ class WebSocketService {
     this.socket.emit('send_message', data, (response: any) => {
       if (response?.error) {
         console.error('Error sending message:', response.error);
+        // Emit a client-side event so UI can requeue for retry
+        try {
+          this.emit('sendError', { error: response.error, payload: data });
+        } catch (e) {
+          // no-op
+        }
       } else {
         console.log('Message sent successfully:', response);
+      }
+    });
+  }
+
+  // Send message and return a Promise that resolves on server ack success
+  sendMessageAck(data: {
+    chatId: string;
+    content: string;
+    type?: string;
+    replyToId?: string;
+    language?: string;
+    filename?: string;
+    attachments?: Array<{ url: string; originalName: string; mimeType: string; size: number; thumbnail?: string | null }>;
+  }): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        return reject(new Error('WebSocket not connected'));
+      }
+      try {
+        this.socket.emit('send_message', data, (response: any) => {
+          if (response?.error) {
+            try { this.emit('sendError', { error: response.error, payload: data }); } catch {}
+            return reject(new Error(response.error || 'Send failed'));
+          }
+          return resolve();
+        });
+      } catch (e) {
+        return reject(e);
       }
     });
   }
@@ -380,6 +490,19 @@ class WebSocketService {
     }
 
     this.socket.emit('delete_message', { chatId, messageId });
+  }
+
+  // Mark messages as read in a chat
+  markMessagesRead(chatId: string, messageIds: string[]): void {
+    if (!this.socket) {
+      console.error('WebSocket not connected');
+      return;
+    }
+    try {
+      this.socket.emit('mark_read', { chatId, messageIds });
+    } catch (e) {
+      console.warn('Failed to emit mark_read', e);
+    }
   }
 
   isConnected(): boolean {

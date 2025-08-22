@@ -35,7 +35,6 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
 
     setUploading(true);
     try {
-      // Upload to backend (server uploads to Supabase with service role)
       const avatarUrl = await apiService.uploadAvatar(file);
 
       // Update local store

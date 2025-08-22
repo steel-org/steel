@@ -1,6 +1,6 @@
 # 📋 Biuld - Version Management Guide
 
-## Current Version: v4.1.1
+## Current Version: v4.2.0
 
 Biuld Chat follows [Semantic Versioning](https://semver.org/) (SemVer) for version management.
 
@@ -16,15 +16,46 @@ MAJOR.MINOR.PATCH
 
 ## Version History
 
-### v4.1.1 (Current) - Patch release
+### v4.2.0 (Current) - Minor Release
 
-**Release Date**: 18/08/2025
+**Release Date**: 22/08/2025
 **Status**: Production Ready
 **Type**: Minor
 
 **Changes**:
+
+- Version bump to v4.2.0 in all project files and UI components.
+- Fixed message duplication (4 sent → 3 received).
+- Optimized profile pic updates across users.
+- Resolved chat persistence issues on logout and group chats.
+- Improved UI: sidebar, group chat header, user & group profile details.
+- Enhanced file preview system.
+- Corrected bio/display name text-background color contrast.
+- Fixed offline status display & typing indicator scope.
+- Added message metadata: timestamps & day labels.
+- Fixed message sending issues to groups/DMs.
+- Enabled notifications, message editing & reactions.
+- Properly render images/files instead of showing URLs.
+- Fixed long message overflow & exposed storage URLs.
+- Corrected avatar display in settings.
+- Fixed new group creation flow.
+- Added multipage navigation, mobile responsiveness, auth pages, offline outbox, notification prompts.
+- Added notifications prompt.
+- Made messages send even when other user user isn't online.
+- Fixed calling replying globally.
+- Changed and improved group messages UI.
+- Make mobile sidebar act as Home (first screen) with navigation to chats/groups; ensure back navigation returns to Home.
+- Minor bug fixes and refactoring for consistency.
+
+### v4.1.1 (Previous) - Patch release
+
+**Release Date**: 18/08/2025
+**Status**: Deprecated
+**Type**: Patch
+
+**Changes**:
+
 - Version bump to v4.1.0 in all project files and UI components.
-- will update this in next patch.
 - Minor bug fixes and refactoring for consistency.
 
 ### v4.1.0 (Previous) - Minor Release
@@ -54,8 +85,8 @@ MAJOR.MINOR.PATCH
 
 - Version bump to v4.0.4 in all project files and UI components.
 - Fixed messages not loading after login.
-- Fixed chats not saving and not emmiting to other users. 
-- Minor performance improvements and bug fixes. 
+- Fixed chats not saving and not emmiting to other users.
+- Minor performance improvements and bug fixes.
 
 ### v4.0.3 (Previous) - Patch Release
 
@@ -106,15 +137,17 @@ MAJOR.MINOR.PATCH
 BREAKING CHANGE: Complete rebrand from Steel to Biuld v4.0.0 with Supabase migration
 
 ### Major Changes:
+
 - Rebranded all references from "Steel" to "Biuld" across frontend/backend
 - Migrated file storage from AWS S3 to Supabase Storage
 - Updated version from v3.4.0 to v4.0.0
 - Removed AWS SDK dependency and related S3 code
 
 ### Frontend Changes and Backend Changes:
+
 - Updated package names: steel-frontend → biuld-frontend
 - Updated branding in AuthModal, ChatLayout, and components
-- Changed localStorage keys: steel_* → biuld_*
+- Changed localStorage keys: steel*\* → biuld*\*
 - Updated environment variables and API token storage
 - Updated meta descriptions and document titles
 - Updated package names: steel-backend → biuld-backend
@@ -125,6 +158,7 @@ BREAKING CHANGE: Complete rebrand from Steel to Biuld v4.0.0 with Supabase migra
 - Cleaned CORS origins for new domain
 
 ### Documentation:
+
 - Updated README.md with new branding
 - Created comprehensive rebrand guide (REBRAND_STEEL_TO_BIULD.md)
 - Updated deployment guides and version references
@@ -447,7 +481,7 @@ BREAKING CHANGE: Complete rebrand from Steel to Biuld v4.0.0 with Supabase migra
 
 ## Future Version Planning
 
-### v4.2.0 (Future Minor Release)
+### v4.3.0 (Future Minor Release)
 
 **Target Date**: TBD
 **Type**: Minor Release (New Features)
@@ -475,11 +509,9 @@ BREAKING CHANGE: Complete rebrand from Steel to Biuld v4.0.0 with Supabase migra
 - [ ] Advanced search filters and indexing
 - [ ] Message threading and replies
 - [ ] Voice messages and audio sharing
-- [ ] Enhanced file preview system
 - [ ] Plugin architecture
 - [ ] Custom themes and branding
 - [ ] Mobile app companion
-- [ ] Advanced notification system
 
 ## Version Update Process
 
@@ -623,13 +655,13 @@ BREAKING CHANGE: Complete rebrand from Steel to Biuld v4.0.0 with Supabase migra
 
 ### Current Version
 
-- **Backend**: v4.1.1
-- **Frontend**: v4.1.1
+- **Backend**: v4.2.0
+- **Frontend**: v4.2.0
 - **Status**: Production Ready
 
 ### Next Release
 
-- **Target**: v4.2.0
+- **Target**: v4.3.0
 - **Type**: Minor Release
 - **Focus**: Performance and UX improvements
 

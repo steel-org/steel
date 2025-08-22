@@ -23,6 +23,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [isTyping, setIsTyping] = useState(false);
   const [showFileUpload, setShowFileUpload] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Track typing state with debounce
   const typingTimeout = useRef<NodeJS.Timeout>();
@@ -50,7 +51,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (message.trim() && !disabled) {
-      onSendMessage(message.trim(), isCodeMode ? 'code' : 'text');
+      onSendMessage(message.trim(), (!isMobile && isCodeMode) ? 'code' : 'text');
       setMessage('');
       setIsCodeMode(false);
       handleTyping(false); // Reset typing state after sending
@@ -72,24 +73,40 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   const handleFileUploaded = (fileData: FileUploadResult) => {
-    onSendMessage(fileData.url, 'file', {
+    const originalName = (fileData as any).originalName || fileData.path.split('/').pop() || 'file';
+    const attachment = {
       url: fileData.url,
-      path: fileData.path,
+      originalName,
+      filename: originalName,
+      mimeType: fileData.type,
       size: fileData.size,
-      type: fileData.type,
-      name: fileData.path.split('/').pop()
-    });
+      thumbnail: null as string | null,
+      path: fileData.path,
+    };
+    onSendMessage(originalName, 'file', attachment);
   };
 
   const triggerFileUpload = () => {
     setShowFileUpload(true);
   };
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile && isCodeMode) setIsCodeMode(false);
+  }, [isMobile, isCodeMode]);
+
   return (
     <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
       <form onSubmit={handleSubmit} className="flex items-end space-x-2">
         <div className="flex-1">
-          {isCodeMode ? (
+          {isCodeMode && !isMobile ? (
             <div className="relative">
               <div className="absolute top-2 right-2 z-10 flex space-x-1">
                 <button
@@ -152,8 +169,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsCodeMode(!isCodeMode)}
-                  className={`p-1.5 rounded-full transition-colors ${
+                  onClick={() => !isMobile && setIsCodeMode(!isCodeMode)}
+                  className={`hidden md:inline-flex p-1.5 rounded-full transition-colors ${
                     isCodeMode 
                       ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400' 
                       : 'text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700'
