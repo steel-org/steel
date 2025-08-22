@@ -1,8 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Send, Code, Smile, X, Reply, UserPlus, Search, Check, XCircle } from "lucide-react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import { isToday, isYesterday, format, differenceInCalendarDays } from 'date-fns';
+import { Send, Code, Smile, X, Reply, UserPlus, Search, Check, XCircle, ArrowLeft } from "lucide-react";
 import { useChatStore } from "@/stores/chatStore";
 import { Message } from "@/types";
 import { apiService } from "@/services/api";
+import { wsService } from "@/services/websocket";
 import MessageComponent from "./Message";
 import MessageInput from "./MessageInput";
 import CodeEditor from "./CodeEditor";
@@ -15,6 +17,7 @@ interface ChatAreaProps {
   onDeleteMessage?: (messageId: string) => void;
   onReplyToMessage: (message: Message) => void;
   onCancelReply: () => void;
+  onBack?: () => void;
 }
 
 export default function ChatArea({
@@ -25,13 +28,16 @@ export default function ChatArea({
   onDeleteMessage,
   onReplyToMessage,
   onCancelReply,
+  onBack,
 }: ChatAreaProps) {
-  const { selectedChat, currentUser, messages, typingUsers, deleteMessage, users } = useChatStore();
+  const { selectedChat, currentUser, messages, typingUsers, deleteMessage, users, editMessage } = useChatStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showCodeInput, setShowCodeInput] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showProfile, setShowProfile] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
-  const chatMessages = selectedChat ? messages[selectedChat.id] || [] : [];
+  const chatMessages = selectedChat ? (messages[selectedChat.id] || []) : [];
   const isGroup = selectedChat?.type === 'GROUP';
   const otherUser = !isGroup
     ? selectedChat?.members.find((member) => member.user.id !== currentUser?.id)?.user
@@ -43,13 +49,65 @@ export default function ChatArea({
     ? Array.from(typingUsers[selectedChat.id] || new Set())
     : [];
 
+  // Show Status
+  const [showOfflinePulse, setShowOfflinePulse] = useState(false);
+  const prevStatusRef = useRef<string | undefined>(liveOtherUser?.status);
+  useEffect(() => {
+    const prev = prevStatusRef.current;
+    const cur = liveOtherUser?.status;
+    if (prev === 'online' && cur === 'offline') {
+      setShowOfflinePulse(true);
+      const t = setTimeout(() => setShowOfflinePulse(false), 2000);
+      return () => clearTimeout(t);
+    }
+    prevStatusRef.current = cur;
+  }, [liveOtherUser?.status]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const formatLastSeen = (lastSeen?: string | Date) => {
+    if (!lastSeen) return 'offline';
+    const d = new Date(lastSeen);
+    const now = new Date();
+    if (isToday(d)) return `today at ${format(d, 'HH:mm')}`;
+    if (isYesterday(d)) return `yesterday at ${format(d, 'HH:mm')}`;
+    const daysDiff = differenceInCalendarDays(now, d);
+    if (daysDiff < 7) return `${format(d, 'EEEE')} at ${format(d, 'HH:mm')}`; // e.g., Monday at 14:22
+    return `${format(d, 'dd/MM/yy')} at ${format(d, 'HH:mm')}`;
+  };
+
+  const openProfile = () => setShowProfile(true);
+  const closeProfile = () => setShowProfile(false);
+
   useEffect(() => {
     scrollToBottom();
   }, [chatMessages]);
+
+  // Track viewport for mobile behaviors
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile && showCodeInput) setShowCodeInput(false);
+  }, [isMobile, showCodeInput]);
+
+  useEffect(() => {
+    if (!selectedChat || !currentUser) return;
+    const unreadIncoming = chatMessages
+      .filter(m => m.sender?.id !== currentUser.id)
+      .filter(m => (m.status || 'SENT').toUpperCase() !== 'READ')
+      .map(m => m.id);
+    if (unreadIncoming.length > 0 && wsService.isConnected()) {
+      wsService.markMessagesRead(selectedChat.id, unreadIncoming);
+    }
+  }, [selectedChat?.id, chatMessages.length]);
 
   const handleFileUpload = async (file: File) => {
     try {
@@ -105,10 +163,10 @@ export default function ChatArea({
       const attachment = {
         url: data.url,
         originalName: data.originalName,
+        filename: data.originalName,
         mimeType: data.type,
         size: data.size,
         thumbnail: null as string | null,
-        // keep extra fields in case UI needs them
         path: data.path,
       };
       
@@ -205,7 +263,6 @@ export default function ChatArea({
       const newChats = st.chats.map((c: any) => (c.id === updated.id ? updated : c));
       st.setChats(newChats);
       st.setSelectedChat(updated);
-      // Reset modal state
       setSelectedUserIds([]);
       setSearchQuery("");
       setSearchResults([]);
@@ -215,6 +272,35 @@ export default function ChatArea({
       alert(e?.message || 'Failed to add members');
     }
   };
+
+  // Messages Calendar
+  const grouped = useMemo(() => {
+    const groups: { label: string; key: string; items: Message[] }[] = [];
+    const byKey: Record<string, number> = {};
+    const sorted = [...chatMessages].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    for (const m of sorted) {
+      const d = new Date(m.createdAt);
+      const dayKey = format(d, 'yyyy-MM-dd');
+      let label = '';
+      if (isToday(d)) label = 'Today';
+      else if (isYesterday(d)) label = 'Yesterday';
+      else {
+        const daysDiff = differenceInCalendarDays(new Date(), d);
+        if (daysDiff < 7) {
+          label = format(d, 'EEEE');
+        } else {
+          label = format(d, 'MMMM d'); 
+        }
+      }
+      if (byKey[dayKey] === undefined) {
+        byKey[dayKey] = groups.length;
+        groups.push({ label, key: dayKey, items: [m] });
+      } else {
+        groups[byKey[dayKey]].items.push(m);
+      }
+    }
+    return groups;
+  }, [chatMessages]);
 
   if (!selectedChat) {
     return (
@@ -247,10 +333,19 @@ export default function ChatArea({
   }
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 min-h-0 flex flex-col">
       {/* Chat Header */}
       <div className="bg-gray-800 border-b border-gray-700 p-4">
         <div className="flex items-center space-x-3">
+          {/* Mobile back button */}
+          <button
+            className="md:hidden mr-2 p-1.5 rounded hover:bg-gray-700 text-gray-200"
+            onClick={() => onBack?.()}
+            aria-label="Back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={openProfile}>
           {isGroup ? (
             <div className="relative">
               <img
@@ -291,46 +386,83 @@ export default function ChatArea({
             <p className="text-sm text-gray-400">
               {isGroup
                 ? `${selectedChat.members.length} member${selectedChat.members.length === 1 ? '' : 's'}`
-                : (liveOtherUser?.status === 'online' ? 'Online' : `Last seen ${liveOtherUser?.lastSeen}`)}
+                : (liveOtherUser?.status === 'online'
+                    ? 'Online'
+                    : (showOfflinePulse
+                        ? 'Offline'
+                        : `Last seen ${formatLastSeen(liveOtherUser?.lastSeen as any)}`))}
             </p>
-            {isGroup && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {selectedChat.members.slice(0, 8).map((m) => (
-                  <div
-                    key={m.id}
-                    className="inline-flex items-center px-2 py-1 rounded-full bg-gray-700/60 border border-gray-600 text-xs text-gray-200 max-w-[180px]"
-                    title={m.user.username}
-                  >
-                    <img
-                      src={m.user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.user.username)}&size=64`}
-                      alt={m.user.username}
-                      className="w-4 h-4 rounded-full mr-1.5"
-                    />
-                    <span className="truncate">{m.user.username}</span>
-                    {m.role === 'OWNER' && (
-                      <span className="ml-1 px-1 rounded bg-amber-600 text-[10px] uppercase tracking-wide">Owner</span>
-                    )}
-                  </div>
-                ))}
-                {selectedChat.members.length > 8 && (
-                  <div className="inline-flex items-center px-2 py-1 rounded-full bg-gray-700/60 border border-gray-600 text-xs text-gray-300">
-                    +{selectedChat.members.length - 8} more
-                  </div>
-                )}
-                {isGroupOwner && (
-                  <button
-                    onClick={() => setShowAddMembers(true)}
-                    className="inline-flex items-center px-2 py-1 rounded-full bg-blue-600/20 border border-blue-500/40 text-xs text-blue-200 hover:bg-blue-600/30"
-                    title="Add members"
-                  >
-                    <UserPlus className="w-3.5 h-3.5 mr-1" /> Add
-                  </button>
-                )}
-              </div>
-            )}
+          </div>
           </div>
         </div>
       </div>
+
+      {/* Profile Modal (DM or Group) */}
+      {showProfile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={closeProfile} />
+          <div className="relative bg-gray-800 border border-gray-700 rounded-lg w-full max-w-lg p-5">
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-gray-100 font-semibold">{isGroup ? 'Group info' : 'Contact info'}</h3>
+              <button className="text-gray-400 hover:text-gray-200" onClick={closeProfile}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {isGroup ? (
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <img
+                    src={selectedChat.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedChat.name || 'Group')}&background=10b981&color=ffffff&size=256&rounded=true`}
+                    alt={selectedChat.name || 'Group'}
+                    className="w-16 h-16 rounded-full"
+                  />
+                  <div>
+                    <div className="text-gray-100 text-lg font-semibold">{selectedChat.name || 'Untitled Group'}</div>
+                    <div className="text-gray-400 text-sm">{selectedChat.members.length} member{selectedChat.members.length === 1 ? '' : 's'}</div>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <div className="text-gray-300 text-sm mb-2">Members</div>
+                  <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+                    {selectedChat.members.map((m) => (
+                      <div key={m.id} className="flex items-center justify-between bg-gray-700/40 border border-gray-600 rounded px-2 py-2">
+                        <div className="flex items-center gap-2">
+                          <img src={m.user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.user.username)}&size=64`} alt={m.user.username} className="w-6 h-6 rounded-full" />
+                          <div className="text-gray-200 text-sm">{m.user.username}</div>
+                        </div>
+                        {m.role === 'OWNER' && (
+                          <span className="ml-2 px-1 rounded bg-amber-600 text-[10px] uppercase tracking-wide">Owner</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {isGroupOwner && (
+                  <div className="mt-3 flex gap-2">
+                    <button onClick={() => setShowAddMembers(true)} className="px-3 py-1.5 rounded bg-blue-600 text-white text-sm">Add members</button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              liveOtherUser && (
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <img
+                      src={liveOtherUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(liveOtherUser.username)}&background=3b82f6&color=ffffff&size=256&rounded=true`}
+                      alt={liveOtherUser.username}
+                      className="w-16 h-16 rounded-full"
+                    />
+                    <div>
+                      <div className="text-gray-100 text-lg font-semibold">{liveOtherUser.username}</div>
+                      <div className="text-gray-400 text-sm">{liveOtherUser.status === 'online' ? 'Online' : (showOfflinePulse ? 'Offline' : `Last seen ${formatLastSeen(liveOtherUser.lastSeen as any)}`)}</div>
+                    </div>
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Reply Preview */}
       {replyingTo && (
@@ -342,7 +474,9 @@ export default function ChatArea({
                 Replying to{" "}
                 {replyingTo.sender.id === currentUser?.id
                   ? "your message"
-                  : (isGroup ? 'this message' : (liveOtherUser?.username || 'the user'))}
+                  : (isGroup
+                      ? (replyingTo.sender?.username || 'a member')
+                      : (liveOtherUser?.username || 'the user'))}
               </span>
             </div>
             <button
@@ -352,23 +486,45 @@ export default function ChatArea({
               <X className="w-4 h-4" />
             </button>
           </div>
-          <div className="mt-2 pl-6 border-l-2 border-blue-400">
-            <p className="text-sm text-gray-400 truncate">{replyingTo.content}</p>
+          <div className="mt-2">
+            <div className="flex items-start gap-2 bg-gray-800/70 border border-blue-500/30 rounded-md p-2">
+              <div className="w-1 self-stretch rounded bg-blue-500/90" />
+              <p className="text-sm text-gray-300 line-clamp-2 break-words">
+                {replyingTo.content || 'Attachment'}
+              </p>
+            </div>
           </div>
         </div>
       )}
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {chatMessages.map((message) => (
-          <MessageComponent
-            key={message.id}
-            message={message}
-            currentUser={currentUser!}
-            otherUser={liveOtherUser}
-            onDeleteMessage={onDeleteMessage || ((messageId) => deleteMessage(messageId, false))}
-            onReplyToMessage={onReplyToMessage}
-          />
+      <div className="messages-container flex-1 overflow-y-auto p-4 space-y-4">
+        {grouped.map((grp) => (
+          <div key={grp.key} className="space-y-4">
+            <div className="flex items-center justify-center">
+              <span className="px-3 py-1 text-xs text-gray-200 bg-gray-700 rounded-full border border-gray-600">
+                {grp.label}
+              </span>
+            </div>
+            {grp.items.map((message) => (
+              <MessageComponent
+                key={message.id}
+                message={message}
+                currentUser={currentUser!}
+                otherUser={liveOtherUser}
+                isGroup={!!isGroup}
+                onDeleteMessage={onDeleteMessage || ((messageId) => deleteMessage(messageId, false))}
+                onReplyToMessage={onReplyToMessage}
+                onEditMessage={(messageId, newContent) => {
+                  if (!selectedChat) return;
+                  editMessage(selectedChat.id, messageId, newContent);
+                }}
+                onReact={(messageId, reaction) => {
+                  try { wsService.reactToMessage(messageId, reaction); } catch (e) { console.warn('reactToMessage failed', e); }
+                }}
+              />
+            ))}
+          </div>
         ))}
 
         {/* Typing Indicator */}
@@ -413,7 +569,7 @@ export default function ChatArea({
 
       {/* Input Area */}
       <div className="bg-gray-800 border-t border-gray-700 p-4">
-        {showCodeInput ? (
+        {showCodeInput && !isMobile ? (
           <CodeEditor
             onSendCode={handleSendCode}
             onClose={() => setShowCodeInput(false)}
@@ -430,22 +586,24 @@ export default function ChatArea({
                   ? `Reply to ${
                       replyingTo.sender.id === currentUser?.id
                         ? "your message"
-                        : (isGroup ? 'this message' : (liveOtherUser?.username || 'the user'))
+                        : (isGroup
+                            ? (replyingTo.sender?.username || 'a member')
+                            : (liveOtherUser?.username || 'the user'))
                     }...`
                   : (isGroup ? `Message ${selectedChat.name || 'the group'}` : `Message ${liveOtherUser?.username || '...'}`)
               }
             />
 
             <button
-              onClick={() => setShowCodeInput(true)}
-              className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
+              onClick={() => !isMobile && setShowCodeInput(true)}
+              className="hidden md:inline-flex p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
               title="Send code snippet"
             >
               <Code className="w-5 h-5" />
             </button>
 
             <button
-              className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
+              className="hidden md:inline-flex p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
               title="Emoji picker (coming soon)"
             >
               <Smile className="w-5 h-5" />

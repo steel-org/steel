@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { prisma } from "../utils/database";
 import { auth } from "../middleware/auth";
 import { validateMessage } from "../middleware/validation";
+import { getIO } from "../websocket/io";
 
 const router = Router();
 
@@ -32,7 +33,14 @@ router.get("/chat/:chatId", auth, async (req: Request, res: Response) => {
     }
 
     const messages = await prisma.message.findMany({
-      where: { chatId },
+      where: {
+        chatId,
+        NOT: {
+          deletedFor: {
+            some: { id: userId },
+          },
+        },
+      },
       include: {
         sender: {
           select: {
@@ -172,6 +180,23 @@ router.put(
           },
         },
       });
+
+      // Broadcast the edit to all chat participants via per-user rooms
+      try {
+        const chat = await prisma.chat.findUnique({
+          where: { id: updatedMessage.chatId },
+          select: { members: { select: { userId: true } } },
+        });
+        if (chat) {
+          const io = getIO();
+          for (const m of chat.members) {
+            io.to(`user:${m.userId}`).emit("message_edited", { message: updatedMessage });
+          }
+        }
+      } catch (emitErr) {
+        // Do not fail the request if broadcasting fails
+        console.error("Failed to emit message_edited event", emitErr);
+      }
 
       return res.json({
         success: true,

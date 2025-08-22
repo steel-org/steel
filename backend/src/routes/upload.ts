@@ -10,7 +10,7 @@ import { supabaseAdmin, SUPABASE_BUCKET } from "../utils/supabase";
 const router = Router();
 const prisma = new PrismaClient();
 
-// In-memory storage; we're forwarding to Supabase
+// In-memory storage
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.post("/avatar", auth, upload.single("avatar"), async (req, res) => {
@@ -104,6 +104,22 @@ router.post("/chat-file", auth, upload.single("file"), async (req, res) => {
 
     const url = publicData.publicUrl;
 
+    let createdId: string | undefined;
+    try {
+      const attachment = await prisma.attachment.create({
+        data: {
+          filename: file.originalname,
+          originalName: file.originalname,
+          mimeType: file.mimetype || "application/octet-stream",
+          size: file.size,
+          url,
+        },
+      });
+      createdId = attachment.id;
+    } catch (e) {
+      logger.error("Failed to save attachment metadata after upload:", e);
+    }
+
     return res.json({
       success: true,
       data: {
@@ -112,6 +128,7 @@ router.post("/chat-file", auth, upload.single("file"), async (req, res) => {
         size: file.size,
         type: file.mimetype,
         originalName: file.originalname,
+        id: createdId,
       },
       message: "File uploaded successfully",
     });

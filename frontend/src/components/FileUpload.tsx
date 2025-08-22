@@ -19,8 +19,12 @@ const FileUpload: React.FC<FileUploadProps> = ({
 }) => {
   const { currentUser } = useChatStore();
   const [uploading, setUploading] = useState(false);
+  const [stage, setStage] = useState<'idle' | 'upload'>('idle');
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timedOutReasonRef = useRef<string | null>(null);
 
   const handleFileSelect = async (file: File) => {
     if (!currentUser) {
@@ -34,21 +38,49 @@ const FileUpload: React.FC<FileUploadProps> = ({
     }
 
     setUploading(true);
+    setStage('upload');
     try {
-      const data = await apiService.uploadChatFile(file);
-      const result: FileUploadResult = {
+      if (abortRef.current) {
+        try { abortRef.current.abort(); } catch {}
+      }
+      abortRef.current = new AbortController();
+      timedOutReasonRef.current = null;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        timedOutReasonRef.current = 'Upload timed out. Please check your connection or try a smaller file.';
+        try { abortRef.current?.abort(); } catch {}
+      }, 45_000);
+      console.log('[FileUpload] Starting chat-file upload');
+      const data = await apiService.uploadChatFile(file, abortRef.current.signal);
+      if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
+      const { selectedChat } = useChatStore.getState();
+      const originalName = data?.originalName || file.name;
+      const result: any = {
         url: data.url,
         path: data.path,
-        size: data.size,
-        type: data.type,
-      };
-      onFileUploaded(result);
+        size: Number(data.size || file.size || 0),
+        type: data.type || file.type,
+        originalName,
+        id: (data as any)?.id,
+      } as any;
+      onFileUploaded(result as FileUploadResult as any);
       onClose();
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        const msg = timedOutReasonRef.current;
+        timedOutReasonRef.current = null;
+        if (msg) {
+          alert(msg);
+        }
+        return;
+      }
       console.error('Upload error:', error);
       alert('Failed to upload file. Please try again.');
     } finally {
       setUploading(false);
+      setStage('idle');
+      if (abortRef.current) abortRef.current = null;
+      if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
     }
   };
 
@@ -80,9 +112,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-white">Upload File</h3>
           <button
-            onClick={onClose}
+            onClick={() => {
+              try { abortRef.current?.abort(); } catch {}
+              onClose();
+            }}
             className="text-gray-400 hover:text-white"
-            disabled={uploading}
           >
             <X size={20} />
           </button>
@@ -104,7 +138,16 @@ const FileUpload: React.FC<FileUploadProps> = ({
           {uploading ? (
             <div className="flex flex-col items-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
-              <p className="text-gray-400">Uploading...</p>
+              <p className="text-gray-400">Uploading file…</p>
+              <button
+                onClick={() => {
+                  try { abortRef.current?.abort(); } catch {}
+                  setUploading(false);
+                }}
+                className="mt-3 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-md text-sm"
+              >
+                Cancel
+              </button>
             </div>
           ) : (
             <div className="flex flex-col items-center">

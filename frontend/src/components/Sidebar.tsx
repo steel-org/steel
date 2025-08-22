@@ -1,37 +1,30 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { Search, UserPlus, MessageSquare, Users, User as UserIcon, Circle, ChevronDown, ChevronRight } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Search, Users, User as UserIcon, Settings as SettingsIcon } from 'lucide-react';
 import { useChatStore } from '@/stores/chatStore';
 import { User, Chat } from '@/types';
-import Settings from './Settings';
+import Link from 'next/link';
 import UserModal from './UserModal';
 import ProfileModal from './ProfileModal';
-import { formatDistanceToNow } from 'date-fns';
+import { format, isToday, isYesterday } from 'date-fns';
+import GroupChatModal from './GroupChatModal';
+import { apiService } from '@/services/api';
 
 interface SidebarProps {
   onLogout: () => void;
   onUserSelect: (userId: string) => void;
+  onChatSelected?: () => void;
 }
 
-export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
-  const { currentUser, users, selectedChat, chats, setSelectedChat } = useChatStore();
+export default function Sidebar({ onLogout, onUserSelect, onChatSelected }: SidebarProps) {
+  const { currentUser, users, selectedChat, chats, setSelectedChat, messages, unreadCounts, addChat } = useChatStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [expandedSections, setExpandedSections] = useState({
-    chats: true,
-    groups: true,
-    online: true
-  });
+  const [activeTab, setActiveTab] = useState<'all' | 'groups' | 'online'>('all');
 
-  // Toggle section expansion
-  const toggleSection = (section: 'chats' | 'groups' | 'online') => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  };
 
   const { directChats, groupChats, onlineUsers } = useMemo(() => {
      const onlineUsers = users.filter(user => 
@@ -49,11 +42,14 @@ export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
       }
     });
 
-    const sortByLastMessage = (a: Chat, b: Chat) => {
-      const timeA = a.lastMessage ? new Date(a.lastMessage).getTime() : 0;
-      const timeB = b.lastMessage ? new Date(b.lastMessage).getTime() : 0;
-      return timeB - timeA; 
+    const getActivityTime = (c: Chat) => {
+      const chatMsgs = (messages && (messages as any)[c.id]) || c.messages || [];
+      const last = chatMsgs.length > 0 ? chatMsgs[chatMsgs.length - 1] : c.messages?.[0];
+      const ts = last?.createdAt || (c as any).updatedAt || (c as any).lastMessageAt || (c as any).createdAt || null;
+      const t = ts instanceof Date ? ts : ts ? new Date(ts) : null;
+      return t ? t.getTime() : 0;
     };
+    const sortByLastMessage = (a: Chat, b: Chat) => getActivityTime(b) - getActivityTime(a);
 
     return {
       directChats: directChats.sort(sortByLastMessage),
@@ -61,6 +57,40 @@ export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
       onlineUsers: onlineUsers.sort((a, b) => a.username.localeCompare(b.username))
     };
   }, [chats, users, currentUser]);
+
+  const getChatName = (chat: Chat) => {
+    const isGroup = chat.type === 'GROUP';
+    return (
+      chat.name || chat.members
+        ?.filter(member => member.user?.id !== currentUser?.id)
+        .map(member => member.user?.username)
+        .join(', ') || (isGroup ? 'Group' : 'User')
+    );
+  };
+
+  const combinedChats = useMemo(() => {
+    const all = [...directChats, ...groupChats];
+    const getActivityTime = (c: Chat) => {
+      const chatMsgs = (messages && (messages as any)[c.id]) || c.messages || [];
+      const last = chatMsgs.length > 0 ? chatMsgs[chatMsgs.length - 1] : c.messages?.[0];
+      const ts = last?.createdAt || (c as any).updatedAt || (c as any).lastMessageAt || (c as any).createdAt || null;
+      const t = ts instanceof Date ? ts : ts ? new Date(ts) : null;
+      return t ? t.getTime() : 0;
+    };
+    return all.sort((a, b) => getActivityTime(b) - getActivityTime(a));
+  }, [directChats, groupChats, messages]);
+
+  const filteredCombinedChats = useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    if (!term) return combinedChats;
+    return combinedChats.filter(c => getChatName(c).toLowerCase().includes(term));
+  }, [combinedChats, searchTerm]);
+
+  const filteredGroupChats = useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    if (!term) return groupChats;
+    return groupChats.filter(c => getChatName(c).toLowerCase().includes(term));
+  }, [groupChats, searchTerm]);
 
   // Filter users
   const filteredUsers = useMemo(() => {
@@ -75,11 +105,6 @@ export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
         return a.username.localeCompare(b.username);
       });
   }, [users, currentUser, searchTerm]);
-
-  const handleUserSelectClick = (userId: string) => {
-    onUserSelect(userId);
-    setSearchTerm('');
-  };
 
   const handleUserClick = (user: User, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -102,23 +127,29 @@ export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
     const otherUser = !isGroup 
       ? chat.members?.find(m => m.user?.id !== currentUser?.id)?.user 
       : undefined;
+    const liveOtherUser = !isGroup && otherUser
+      ? (users.find(u => u.id === otherUser.id) || otherUser)
+      : undefined;
     
-    const lastMessage = chat.messages?.[0];
+    const chatMsgs = (messages && (messages as any)[chat.id]) || chat.messages || [];
+    const lastMsg = chatMsgs.length > 0 ? chatMsgs[chatMsgs.length - 1] : chat.messages?.[0];
+    const lastMessageContent = lastMsg?.content || (chat as any).lastMessage || '';
     const isSelected = selectedChat?.id === chat.id;
-    const lastMessageTime = chat.lastMessageAt
-      ? formatDistanceToNow(
-       chat.lastMessageAt instanceof Date
-        ? chat.lastMessageAt
-        : new Date(chat.lastMessageAt),
-        { addSuffix: true }
-      )
-    : null;
+    const timeSource: any = lastMsg?.createdAt || (chat as any).updatedAt || (chat as any).lastMessageAt || (chat as any).createdAt || null;
+    const unread = (unreadCounts && (unreadCounts as any)[chat.id]) || 0;
+    const lastMessageTime = (() => {
+      if (!timeSource) return null;
+      const d = timeSource instanceof Date ? timeSource : new Date(timeSource);
+      if (isToday(d)) return format(d, 'HH:mm');
+      if (isYesterday(d)) return 'Yesterday';
+      return format(d, 'dd/MM/yyyy');
+    })();
 
     return (
       <div
         key={chat.id}
         className={`flex items-center p-3 hover:bg-gray-700/50 cursor-pointer ${isSelected ? 'bg-gray-700/70' : ''}`}
-        onClick={() => setSelectedChat(chat)}
+        onClick={() => { setSelectedChat(chat); onChatSelected?.(); }}
       >
         <div className="relative">
           {isGroup ? (
@@ -146,27 +177,40 @@ export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
               </div>
             )
           )}
-          {!isGroup && chat.members?.some(m => m.user?.status === 'online' && m.user.id !== currentUser?.id) && (
-            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-800"></div>
+          {!isGroup && (
+            <div
+              className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-gray-800 ${
+                (liveOtherUser?.status === 'online') ? 'bg-green-500' : 'bg-gray-500'
+              }`}
+            ></div>
           )}
         </div>
         <div className="ml-3 flex-1 min-w-0">
           <div className="flex justify-between items-center">
-            <h3 className="text-sm font-medium text-gray-100 truncate">{chatName || 'Unknown'}</h3>
+            <h3 className={`text-sm font-medium truncate ${unread > 0 ? 'text-white' : 'text-gray-100'}`}>
+              {chatName || 'Unknown'}
+            </h3>
             {lastMessageTime && (
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-400 ml-2">
                 {lastMessageTime}
               </span>
             )}
           </div>
-          {lastMessage?.content && (
-            <p className="text-xs text-gray-400 truncate">
-              {lastMessage.sender?.id === currentUser?.id ? 'You: ' : ''}
-              {lastMessage.content.substring(0, 30)}
-              {lastMessage.content.length > 30 ? '...' : ''}
+          {lastMessageContent ? (
+            <p className={`text-xs truncate ${unread > 0 ? 'text-gray-200' : 'text-gray-400'}`}>
+              {lastMessageContent.substring(0, 30)}
+              {lastMessageContent.length > 30 ? '...' : ''}
             </p>
-          )}
+          ) : null}
         </div>
+        {/* Unread badge */}
+        {unread > 0 && (
+          <div className="ml-2 min-w-[20px] flex justify-end">
+            <span className="inline-flex items-center justify-center px-1.5 h-5 text-xs rounded-full bg-blue-600 text-white">
+              {unread > 99 ? '99+' : unread}
+            </span>
+          </div>
+        )}
       </div>
     );
   };
@@ -175,7 +219,9 @@ export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
     <div
       key={user.id}
       className="flex items-center p-2 hover:bg-gray-700/50 rounded-md cursor-pointer"
-      onClick={() => onUserSelect(user.id)}
+      onClick={() => { onUserSelect(user.id); setSearchTerm(''); }}
+      onContextMenu={(e) => handleUserClick(user, e)}
+      title="Click to DM • Right-click to view profile"
     >
       <div className="relative">
         {user.avatar ? (
@@ -189,17 +235,17 @@ export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
             {user.username.charAt(0).toUpperCase()}
           </div>
         )}
-        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-800"></div>
+        <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-gray-800 ${user.status === 'online' ? 'bg-green-500' : 'bg-gray-500'}`}></div>
       </div>
       <div className="ml-3">
         <p className="text-sm font-medium text-gray-100">{user.username}</p>
-        <p className="text-xs text-gray-400">{user.status}</p>
+        <p className="text-xs text-gray-400">{user.status === 'online' ? 'Online' : `Last seen ${formatTime(user.lastSeen)}`}</p>
       </div>
     </div>
   );
 
   return (
-    <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col h-screen">
+    <div className="w-full md:w-80 bg-gray-800 border-r border-gray-700 flex flex-col h-full md:h-screen">
       {/* Header */}
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between mb-4">
@@ -209,13 +255,20 @@ export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => setIsUserModalOpen(true)}
+              onClick={() => setIsGroupModalOpen(true)}
               className="p-2 rounded-full hover:bg-gray-700"
-              title="Add User"
+              title="New Group"
             >
-              <UserPlus size={20} />
+              <Users size={20} />
             </button>
-            <Settings onLogout={onLogout} />
+            <Link
+              href="/settings"
+              className="p-2 rounded-full hover:bg-gray-700 text-gray-300 hover:text-white"
+              title="Settings"
+            >
+              {/* Using the SettingsIcon that is already imported as SettingsIcon */}
+              <SettingsIcon size={20} />
+            </Link>
           </div>
         </div>
         
@@ -224,88 +277,79 @@ export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
-            placeholder="Search users..."
+            placeholder={activeTab === 'online' ? 'Search users...' : 'Search chats...'}
             className="w-full bg-gray-700 text-white rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+        {/* Tabs */}
+        <div className="mt-3 flex items-center gap-2">
+          {(() => {
+            const allCount = directChats.length + groupChats.length;
+            const groupsCount = groupChats.length;
+            const onlineCount = onlineUsers.length;
+            const totalUnreadAll = [...directChats, ...groupChats]
+              .reduce((sum, c) => sum + ((unreadCounts as any)?.[c.id] || 0), 0);
+            const totalUnreadGroups = groupChats
+              .reduce((sum, c) => sum + ((unreadCounts as any)?.[c.id] || 0), 0);
+            return [
+              { key: 'all', label: `All (${allCount})`, unread: totalUnreadAll },
+              { key: 'groups', label: `Groups (${groupsCount})`, unread: totalUnreadGroups },
+              { key: 'online', label: `Online (${onlineCount})`, unread: 0 },
+            ];
+          })().map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key as any)}
+              className={`px-3 py-1.5 rounded-full text-sm flex items-center gap-2 ${
+                activeTab === (t.key as any)
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              <span>{t.label}</span>
+              {t.unread > 0 && (
+                <span className="inline-flex items-center justify-center min-w-[18px] h-5 px-1 text-xs rounded-full bg-blue-500 text-white">
+                  {t.unread > 99 ? '99+' : t.unread}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Chats Section */}
+      {/* Content Section */}
       <div className="flex-1 overflow-y-auto">
-        {/* Direct Chats */}
-        <div className="border-b border-gray-700">
-          <div 
-            className="flex items-center justify-between p-3 hover:bg-gray-700/50 cursor-pointer"
-            onClick={() => toggleSection('chats')}
-          >
-            <div className="flex items-center">
-              <MessageSquare size={18} className="text-gray-400 mr-2" />
-              <h2 className="font-medium text-gray-200">Direct Messages</h2>
-              <span className="ml-2 text-xs bg-gray-600 text-white rounded-full px-2 py-0.5">
-                {directChats.length}
-              </span>
-            </div>
-            {expandedSections.chats ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+        {activeTab === 'all' && (
+          <div className="divide-y divide-gray-700/60">
+            {filteredCombinedChats.length > 0 ? (
+              filteredCombinedChats.map(chat => renderChatItem(chat))
+            ) : (
+              <p className="text-sm text-gray-400 p-3 text-center">No chats yet</p>
+            )}
           </div>
-          
-          {expandedSections.chats && directChats.map(chat => renderChatItem(chat))}
-          
-          {expandedSections.chats && directChats.length === 0 && (
-            <p className="text-sm text-gray-400 p-3 text-center">No direct messages yet</p>
-          )}
-        </div>
+        )}
 
-        {/* Group Chats */}
-        <div className="border-b border-gray-700">
-          <div 
-            className="flex items-center justify-between p-3 hover:bg-gray-700/50 cursor-pointer"
-            onClick={() => toggleSection('groups')}
-          >
-            <div className="flex items-center">
-              <Users size={18} className="text-gray-400 mr-2" />
-              <h2 className="font-medium text-gray-200">Group Chats</h2>
-              <span className="ml-2 text-xs bg-gray-600 text-white rounded-full px-2 py-0.5">
-                {groupChats.length}
-              </span>
-            </div>
-            {expandedSections.groups ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+        {activeTab === 'groups' && (
+          <div className="divide-y divide-gray-700/60">
+            {filteredGroupChats.length > 0 ? (
+              filteredGroupChats.map(chat => renderChatItem(chat))
+            ) : (
+              <p className="text-sm text-gray-400 p-3 text-center">No group chats yet</p>
+            )}
           </div>
-          
-          {expandedSections.groups && groupChats.map(chat => renderChatItem(chat))}
-          
-          {expandedSections.groups && groupChats.length === 0 && (
-            <p className="text-sm text-gray-400 p-3 text-center">No group chats yet</p>
-          )}
-        </div>
+        )}
 
-        {/* Online Users */}
-        <div>
-          <div 
-            className="flex items-center justify-between p-3 hover:bg-gray-700/50 cursor-pointer"
-            onClick={() => toggleSection('online')}
-          >
-            <div className="flex items-center">
-              <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-              <h2 className="font-medium text-gray-200">Online Now</h2>
-              <span className="ml-2 text-xs bg-green-600 text-white rounded-full px-2 py-0.5">
-                {onlineUsers.length}
-              </span>
-            </div>
-            {expandedSections.online ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+        {activeTab === 'online' && (
+          <div className="px-3 py-2 space-y-1">
+            {filteredUsers.length > 0 ? (
+              filteredUsers.map(user => renderOnlineUser(user))
+            ) : (
+              <p className="text-sm text-gray-400 text-center py-2">No one is online</p>
+            )}
           </div>
-          
-          {expandedSections.online && (
-            <div className="px-3 pb-3 space-y-1">
-              {onlineUsers.length > 0 ? (
-                onlineUsers.map(user => renderOnlineUser(user))
-              ) : (
-                <p className="text-sm text-gray-400 text-center py-2">No one is online</p>
-              )}
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Current User */}
@@ -342,74 +386,6 @@ export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
           </div>
         </div>
       )}
-
-
-
-      {/* Online Users */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-4">
-          <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-3">
-            Online ({filteredUsers.length})
-          </h3>
-          <div className="space-y-2">
-            {filteredUsers.map((user) => {
-              const isSelected = selectedChat?.participants?.includes(user.id);
-              return (
-                <button
-                  key={user.id}
-                  onClick={() => handleUserSelectClick(user.id)}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    handleUserClick(user);
-                  }}
-                  className={`w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700 transition-colors text-left group ${
-                    isSelected ? 'bg-gray-700 border-l-4 border-blue-500' : ''
-                  }`}
-                >
-                  <div className="relative">
-                    <img
-                      src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=3b82f6&color=ffffff&size=128&rounded=true`}
-                      alt={user.username}
-                      className="w-10 h-10 rounded-full"
-                    />
-                    <div className="absolute -bottom-1 -right-1">
-                      <Circle
-                        className={`w-4 h-4 ${
-                          user.status === "online" ? 'text-green-500 fill-current' : 'text-gray-500'
-                        }`}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-100 truncate">{user.username}</p>
-                      <p className="text-sm text-gray-400">
-                        {user.status === 'online' ? 'Online' : `Last seen ${formatTime(user.lastSeen)}`}
-                      </p>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleUserClick(user);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white p-1"
-                      title="View profile"
-                    >
-                      <UserIcon className="w-4 h-4" />
-                    </button>
-                  </div>
-                </button>
-              );
-            })}
-            {filteredUsers.length === 0 && (
-              <div className="text-center py-8">
-                <UserIcon className="w-12 h-12 text-gray-500 mx-auto mb-3" />
-                <p className="text-gray-400">No users online</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
       
       {currentUser && (
         <UserModal
@@ -425,6 +401,28 @@ export default function Sidebar({ onLogout, onUserSelect }: SidebarProps) {
           isOpen={isProfileModalOpen}
           onClose={() => setIsProfileModalOpen(false)}
           isCurrentUser={selectedUser.id === currentUser?.id}
+        />
+      )}
+
+      {/* Create Group Modal */}
+      {isGroupModalOpen && currentUser && (
+        <GroupChatModal
+          isOpen={isGroupModalOpen}
+          onClose={() => setIsGroupModalOpen(false)}
+          users={users}
+          currentUser={currentUser}
+          onCreate={async (name: string, userIds: string[]) => {
+            try {
+              const newChat = await apiService.createChat({ name, type: 'GROUP', memberIds: userIds });
+              addChat(newChat);
+              setSelectedChat(newChat);
+              setIsGroupModalOpen(false);
+              onChatSelected?.();
+            } catch (err) {
+              console.error('Error creating group chat:', err);
+              alert('Failed to create group chat. Please try again.');
+            }
+          }}
         />
       )}
     </div>

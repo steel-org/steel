@@ -5,6 +5,7 @@ import messageRoutes from "./message";
 import userRoutes from "./user";
 import fileRoutes from "./file";
 import uploadRoutes from "./upload";
+import pushRoutes from "./push";
 
 export const setupRoutes = (app: Express) => {
   // API routes
@@ -14,12 +15,13 @@ export const setupRoutes = (app: Express) => {
   app.use("/api/files", fileRoutes);
   app.use("/api/users", userRoutes);
   app.use("/api/upload", uploadRoutes);
+  app.use("/api/push", pushRoutes);
 
   // API documentation
   app.get("/api/docs", (req: Request, res: Response) => {
     res.json({
       name: "Biuld API",
-      version: "4.1.1",
+      version: "4.2.0",
       endpoints: {
         auth: {
           "POST /api/auth/register": "Register new user",

@@ -1,6 +1,17 @@
 import { ApiResponse, AuthResponse, Chat, Message, MessagesResponse, User } from '@/types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+// Prefer explicit env. Otherwise, when running in a browser (incl. mobile on LAN),
+// resolve to current host with backend port 5000 to avoid localhost-only issues.
+const API_BASE_URL = (() => {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl) return envUrl;
+  if (typeof window !== 'undefined') {
+    const proto = window.location.protocol;
+    const host = window.location.hostname; // works for LAN IP, hostname.local, localhost
+    return `${proto}//${host}:5000`;
+  }
+  return 'http://localhost:5000';
+})();
 
 class ApiService {
   private token: string | null = null;
@@ -10,6 +21,28 @@ class ApiService {
     if (typeof window !== 'undefined') {
       localStorage.setItem('biuld_token', token);
     }
+  }
+
+  // Web Push
+  async getVapidPublicKey(): Promise<string> {
+    const response = await this.request<{ publicKey: string }>(`/api/push/vapidPublicKey`);
+    const d: any = response as any;
+    const key = d?.data?.publicKey ?? (d?.publicKey ?? "");
+    return key;
+  }
+
+  async pushSubscribe(subscription: PushSubscriptionJSON): Promise<void> {
+    await this.request(`/api/push/subscribe`, {
+      method: 'POST',
+      body: JSON.stringify(subscription),
+    });
+  }
+
+  async pushUnsubscribe(subscription: PushSubscriptionJSON): Promise<void> {
+    await this.request(`/api/push/unsubscribe`, {
+      method: 'POST',
+      body: JSON.stringify(subscription),
+    });
   }
 
   getToken(): string | null {
@@ -59,11 +92,20 @@ class ApiService {
           this.clearToken();
           return { success: true, data: { message: 'Logged out successfully' } as T };
         }
+        if (response.status === 401) {
+          // Token invalid/expired; clear and let caller handle re-auth
+          this.clearToken();
+          throw new Error('Unauthorized');
+        }
         throw new Error(data.error || 'Request failed');
       }
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
+      // Do not log AbortError to avoid noisy console when user cancels/timeout
+      if (error?.name === 'AbortError') {
+        throw error;
+      }
       console.error('API request failed:', error);
       throw error;
     }
@@ -250,8 +292,51 @@ class ApiService {
   }
 
   async downloadFile(fileId: string): Promise<string> {
-    const response = await this.request<{ downloadUrl: string }>(`/api/files/${fileId}/download`);
-    return response.data!.downloadUrl;
+    // Directly fetch the proxy endpoint which now streams the file
+    const url = `${API_BASE_URL}/api/files/${fileId}/download`;
+    const token = this.getToken();
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!resp.ok) {
+      // Try to parse error JSON for message if available
+      try {
+        const j = await resp.json();
+        throw new Error(j?.error || `Download failed (${resp.status})`);
+      } catch (_) {
+        throw new Error(`Download failed (${resp.status})`);
+      }
+    }
+    // Convert to Blob and return an object URL for client download
+    const blob = await resp.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    return objectUrl;
+  }
+
+  async downloadViaProxy(fileUrl: string, name?: string): Promise<string> {
+    const token = this.getToken();
+    const url = new URL(`${API_BASE_URL}/api/files/download-proxy`);
+    url.searchParams.set('url', fileUrl);
+    if (name) url.searchParams.set('name', name);
+    const resp = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!resp.ok) {
+      try {
+        const j = await resp.json();
+        throw new Error(j?.error || `Download failed (${resp.status})`);
+      } catch (_) {
+        throw new Error(`Download failed (${resp.status})`);
+      }
+    }
+    const blob = await resp.blob();
+    return URL.createObjectURL(blob);
   }
 
   // Avatars
@@ -272,14 +357,31 @@ class ApiService {
   }
 
   // Chat files
-  async uploadChatFile(file: File): Promise<any> {
+  async uploadChatFile(file: File, signal?: AbortSignal): Promise<any> {
     const form = new FormData();
     form.append('file', file);
     const response = await this.request(`/api/upload/chat-file`, {
       method: 'POST',
       body: form,
+      ...(signal ? { signal } : {}),
     });
     return response.data as any; // { url, path, size, type, originalName }
+  }
+
+  async saveFileMetadata(data: {
+    url: string;
+    originalName: string;
+    mimeType: string;
+    size: number;
+    chatId?: string;
+    messageId?: string;
+  }, signal?: AbortSignal): Promise<any> {
+    const response = await this.request(`/api/files/save-metadata`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+      ...(signal ? { signal } : {}),
+    });
+    return response.data as any; // attachment object with id
   }
 }
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useRouter } from 'next/router';
 import { useChatStore } from "@/stores/chatStore";
 import { apiService } from "@/services/api";
 import { wsService } from "@/services/websocket";
@@ -8,6 +9,7 @@ import AuthModal from "./AuthModal";
 import { User, Message, Chat } from "@/types";
 
 export default function ChatLayout() {
+  const router = useRouter();
   const {
     currentUser,
     setCurrentUser,
@@ -27,12 +29,110 @@ export default function ChatLayout() {
     typingUsers,
     addTypingUser,
     removeTypingUser,
+    deleteMessage: storeDeleteMessage,
   } = useChatStore();
 
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
-   const creatingDMWithRef = useRef<Set<string>>(new Set());
+  const [replyingByChat, setReplyingByChat] = useState<Record<string, Message | null>>({});
+  const creatingDMWithRef = useRef<Set<string>>(new Set());
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileShowSidebar, setMobileShowSidebar] = useState(true);
+  const suppressUrlSyncRef = useRef(false);
+  const authBlockedRef = useRef(false);
+  const loadingMessagesForRef = useRef<string | null>(null);
+
+  type OutboxItem = {
+    id: string; 
+    payload: {
+      chatId: string;
+      content: string;
+      type?: string;
+      replyToId?: string;
+      language?: string;
+      filename?: string;
+      attachments?: Array<{ url: string; originalName: string; filename?: string; mimeType: string; size: number; thumbnail?: string | null }>;
+    };
+    createdAt: number;
+  };
+  const OUTBOX_KEY = 'biuld_outbox_v1';
+  const outboxRef = useRef<OutboxItem[]>([]);
+  const loadOutbox = (): OutboxItem[] => {
+    try {
+      const raw = localStorage.getItem(OUTBOX_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+  const saveOutbox = (list: OutboxItem[]) => {
+    try { localStorage.setItem(OUTBOX_KEY, JSON.stringify(list)); } catch {}
+  };
+  const enqueueOutbox = (item: OutboxItem) => {
+    const next = [...outboxRef.current, item];
+    outboxRef.current = next;
+    saveOutbox(next);
+  };
+  const flushOutbox = async () => {
+    if (!wsService.isConnected()) return;
+    const items = [...outboxRef.current];
+    if (!items.length) return;
+    for (const it of items) {
+      try {
+        await wsService.sendMessageAck(it.payload);
+      } catch (e) {
+        break;
+      }
+      const remaining = outboxRef.current.filter(x => x.id !== it.id);
+      outboxRef.current = remaining;
+      saveOutbox(remaining);
+      await new Promise(r => setTimeout(r, 50));
+    }
+  };
+
+  useEffect(() => {
+    outboxRef.current = loadOutbox();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onOnline = () => {
+      flushOutbox();
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, []);
+
+  const slugify = (s: string) => (s || '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9\-]/g, '')
+    .replace(/-+/g, '-');
+
+  const getChatRoute = (chat: Chat): string => {
+    if (chat.type === 'DIRECT') {
+      const me = useChatStore.getState().currentUser;
+      const other = (chat.members || []).map((m: any) => m.user).find((u: any) => u?.id !== me?.id);
+      const username = (other?.username || 'user');
+      return `/chat/${encodeURIComponent(username)}`;
+    }
+    const name = chat.name || 'group';
+    return `/group/${encodeURIComponent(slugify(name))}`;
+  };
+
+  const routeIfChanged = (to: string) => {
+    try {
+      if (isMobile && mobileShowSidebar) return;
+      if (suppressUrlSyncRef.current) return;
+      if (!router?.isReady) return;
+      const current = router?.asPath || '';
+      if (current !== to) {
+        router.replace(to, undefined as any, { shallow: true } as any);
+      }
+    } catch {}
+  };
 
   useEffect(() => {
     // Check if user is already authenticated
@@ -43,6 +143,250 @@ export default function ChatLayout() {
       setShowAuthModal(true);
     }
   }, [currentUser]);
+
+  // Track viewport for mobile layout switching
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const prevIsMobileRef = { current: null as null | boolean };
+    let timer: any = null;
+    const onResizeCore = () => {
+      const m = window.innerWidth < 768;
+      if (prevIsMobileRef.current === null) {
+        prevIsMobileRef.current = m;
+        setIsMobile(m);
+        try {
+          const force = sessionStorage.getItem('biuld_sidebar_force_visible');
+          if (force === '1') {
+            setMobileShowSidebar(true);
+            sessionStorage.removeItem('biuld_sidebar_force_visible');
+            sessionStorage.setItem('biuld_sidebar_visible', '1');
+            return;
+          }
+          const persisted = sessionStorage.getItem('biuld_sidebar_visible');
+          if (persisted != null) {
+            setMobileShowSidebar(persisted === '1');
+            return;
+          }
+        } catch {}
+        setMobileShowSidebar(m ? !useChatStore.getState().selectedChat : true);
+        return;
+      }
+      if (prevIsMobileRef.current !== m) {
+        prevIsMobileRef.current = m;
+        setIsMobile(m);
+        if (!m) {
+          setMobileShowSidebar(true);
+        } else {
+          setMobileShowSidebar(!useChatStore.getState().selectedChat);
+        }
+      }
+    };
+    const onResize = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(onResizeCore, 120);
+    };
+    onResizeCore();
+    window.addEventListener('resize', onResize);
+    return () => {
+      if (timer) clearTimeout(timer);
+      window.removeEventListener('resize', onResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      sessionStorage.setItem('biuld_sidebar_visible', mobileShowSidebar ? '1' : '0');
+    } catch {}
+  }, [mobileShowSidebar]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const chatId = params.get('chatId');
+      if (!chatId) return;
+      if (!apiService.getToken()) return;
+      if (isMobile && mobileShowSidebar) return;
+      const match = chats.find((c) => c.id === chatId);
+      if (match && (!selectedChat || selectedChat.id !== match.id)) {
+        setSelectedChat(match);
+        if (!isMobile || !mobileShowSidebar) setMobileShowSidebar(false);
+        routeIfChanged(getChatRoute(match));
+      }
+    } catch (e) {
+    }
+  }, [chats, selectedChat?.id, isMobile, mobileShowSidebar]);
+
+  useEffect(() => {
+    const path = router?.pathname || '';
+    const slugParam = router?.query?.slug;
+    const slug = typeof slugParam === 'string' ? slugParam : Array.isArray(slugParam) ? slugParam[0] : undefined;
+    if (!slug) return;
+    if (!apiService.getToken()) return; 
+    if (isMobile && mobileShowSidebar) return;
+
+   const pathIsChat = path.startsWith('/chat');
+    const pathIsGroup = path.startsWith('/group');
+    if (selectedChat) {
+      if ((pathIsChat && selectedChat.type !== 'DIRECT') || (pathIsGroup && selectedChat.type !== 'GROUP')) {
+        return;
+      }
+    }
+
+    const tryResolve = (items: Chat[]) => {
+      const isChat = pathIsChat;
+      const isGroup = pathIsGroup;
+      if (!isChat && !isGroup) return undefined;
+      if (isChat) {
+        const me = useChatStore.getState().currentUser;
+        return items.find((c) => {
+          if (c.type !== 'DIRECT') return false;
+          const other = (c.members || []).map((m: any) => m.user).find((u: any) => u?.id !== me?.id);
+          return other && other.username?.toLowerCase() === slug.toLowerCase();
+        });
+      } else {
+        return items.find((c) => {
+          if (c.type !== 'GROUP') return false;
+          const s = slugify(c.name || 'group');
+          return s === slug.toLowerCase();
+        });
+      }
+    };
+
+    let match = tryResolve(chats);
+    if (match) {
+      if (!selectedChat || selectedChat.id !== match.id) {
+        setSelectedChat(match);
+        if (!isMobile || !mobileShowSidebar) setMobileShowSidebar(false);
+      }
+    } else {
+      (async () => {
+        try {
+          const latest = await apiService.getChats();
+          useChatStore.getState().setChats(latest);
+          const found = tryResolve(latest);
+          if (found) {
+            setSelectedChat(found);
+            if (!isMobile || mobileShowSidebar === false) setMobileShowSidebar(false);
+          }
+        } catch {}
+      })();
+    }
+  }, [router?.pathname, router?.query?.slug, chats.length, selectedChat?.id, selectedChat?.type, isMobile, mobileShowSidebar]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onMessage = (e: MessageEvent) => {
+      const data: any = e?.data;
+      if (!data || data.type !== 'OPEN_CHAT' || !data.chatId) return;
+      const chatId = String(data.chatId);
+      try { sessionStorage.setItem('biuld_pending_chat', chatId); } catch {}
+      if (!apiService.getToken() || !currentUser) {
+        setShowAuthModal(true);
+        return;
+      }
+
+      const match = chats.find((c) => c.id === chatId);
+      if (match) {
+        if (!selectedChat || selectedChat.id !== match.id) {
+          setSelectedChat(match);
+        }
+        routeIfChanged(getChatRoute(match));
+        if (!isMobile || mobileShowSidebar === false) setMobileShowSidebar(false);
+      } else {
+        (async () => {
+          try {
+            const latest = await apiService.getChats();
+            useChatStore.getState().setChats(latest);
+            const found = latest.find((c: any) => c.id === chatId);
+            if (found) {
+              setSelectedChat(found);
+              try { sessionStorage.removeItem('biuld_pending_chat'); } catch {}
+              routeIfChanged(getChatRoute(found));
+              if (!isMobile || mobileShowSidebar === false) setMobileShowSidebar(false);
+            }
+          } catch {}
+        })();
+      }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [chats, selectedChat?.id, router, isMobile, mobileShowSidebar]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let pending: string | null = null;
+    try { pending = sessionStorage.getItem('biuld_pending_chat'); } catch {}
+    if (!pending) return;
+    const match = chats.find(c => c.id === pending);
+    if (match) {
+      if (!selectedChat || selectedChat.id !== match.id) {
+        setSelectedChat(match);
+      }
+      try { sessionStorage.removeItem('biuld_pending_chat'); } catch {}
+      routeIfChanged(getChatRoute(match));
+      if (!isMobile || !mobileShowSidebar) setMobileShowSidebar(false);
+    } else {
+      (async () => {
+        try {
+          const latest = await apiService.getChats();
+          useChatStore.getState().setChats(latest);
+          const found = latest.find((c: any) => c.id === pending);
+          if (found) {
+            setSelectedChat(found);
+            try { sessionStorage.removeItem('biuld_pending_chat'); } catch {}
+            routeIfChanged(getChatRoute(found));
+            setMobileShowSidebar(false);
+          }
+        } catch {}
+      })();
+    }
+  }, [chats.length, selectedChat?.id, router]);
+
+  useEffect(() => {
+    const q = router?.query?.chatId as string | string[] | undefined;
+    const chatId = typeof q === 'string' ? q : Array.isArray(q) ? q[0] : undefined;
+    if (!chatId) return;
+   if (isMobile && mobileShowSidebar === true) {
+    }
+    if (!apiService.getToken() || !currentUser) {
+      setShowAuthModal(true);
+      try { sessionStorage.setItem('biuld_pending_chat', chatId); } catch {}
+      return;
+    }
+    const match = chats.find(c => c.id === chatId);
+    if (match) {
+      if (!selectedChat || selectedChat.id !== match.id) {
+        setSelectedChat(match);
+      }
+      routeIfChanged(getChatRoute(match));
+      setMobileShowSidebar(false);
+      try { sessionStorage.removeItem('biuld_pending_chat'); } catch {}
+    } else {
+      (async () => {
+        try {
+          const latest = await apiService.getChats();
+          useChatStore.getState().setChats(latest);
+          const found = latest.find((c: any) => c.id === chatId);
+          if (found) {
+            setSelectedChat(found);
+            routeIfChanged(getChatRoute(found));
+            if (!isMobile || !mobileShowSidebar) setMobileShowSidebar(false);
+            try { sessionStorage.removeItem('biuld_pending_chat'); } catch {}
+          }
+        } catch {}
+      })();
+    }
+  }, [router?.query?.chatId, chats.length, selectedChat?.id, isMobile, mobileShowSidebar]);
+
+  useEffect(() => {
+    if (!selectedChat?.id) return;
+    if (isMobile && mobileShowSidebar) return;
+    if (!apiService.getToken()) return; 
+    if (suppressUrlSyncRef.current) return;
+    routeIfChanged(getChatRoute(selectedChat));
+  }, [selectedChat?.id, isMobile, mobileShowSidebar]);
 
   useEffect(() => {
     if (currentUser) {
@@ -63,6 +407,7 @@ export default function ChatLayout() {
         wsService.off("users");
         wsService.off("userJoined");
         wsService.off("userLeft");
+        wsService.off('sendError');
         wsService.off("messageReceived");
         wsService.off("newMessage");
         // Add any other event listeners to clean up
@@ -81,17 +426,53 @@ export default function ChatLayout() {
 
   // Load messages when a chat is selected or changes
   useEffect(() => {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const loadMessages = async () => {
       if (!selectedChat) return;
+      if (!currentUser) return; // avoid unauthorized fetches
+      if (authBlockedRef.current) return; // stop loops after 401 until re-auth
+      if (isMobile && mobileShowSidebar) return; // don't load while leaving chat
+      if (!apiService.getToken()) return; // no token, skip
+      if (loadingMessagesForRef.current === selectedChat.id) return; // already loading this chat
       try {
+        loadingMessagesForRef.current = selectedChat.id;
+        const local = loadMessagesFromStorage(selectedChat.id);
+        if (local && local.length) {
+          setMessages(selectedChat.id, local);
+        } else {
+          setMessages(selectedChat.id, []);
+        }
+
         const res = await apiService.getMessages(selectedChat.id, 1, 50);
-        setMessages(selectedChat.id, res.messages || []);
-      } catch (err) {
+        const fromServer = res.messages || [];
+        if (fromServer.length) {
+          const byId = new Map<string, Message>();
+          for (const m of local || []) byId.set(m.id, m);
+          for (const m of fromServer) byId.set(m.id, m);
+          const merged = Array.from(byId.values()).sort((a, b) =>
+            new Date(a.createdAt || a.updatedAt || 0).getTime() -
+            new Date(b.createdAt || b.updatedAt || 0).getTime()
+          );
+          setMessages(selectedChat.id, merged);
+        }
+      } catch (err: any) {
         console.error('Failed to load messages for chat', selectedChat.id, err);
+        const msg = String(err?.message || '');
+        if (msg.includes('Unauthorized')) {
+          try { apiService.clearToken(); } catch {}
+          authBlockedRef.current = true;
+          setShowAuthModal(true);
+        }
       }
     };
     loadMessages();
-  }, [selectedChat?.id]);
+    return () => {
+      if (loadingMessagesForRef.current === (selectedChat?.id || null)) {
+        loadingMessagesForRef.current = null;
+      }
+      if (controller && typeof controller.abort === 'function') controller.abort();
+    };
+  }, [selectedChat?.id, isMobile, mobileShowSidebar, currentUser]);
 
   const loadCurrentUser = async () => {
     try {
@@ -149,84 +530,16 @@ export default function ChatLayout() {
       });
     });
 
-    // Handle new messages (backend emits message_received with { message })
-    wsService.on("messageReceived", (payload: any) => {
-      const msg: Message = payload?.message || payload;
-      if (!msg?.chatId) return;
-      const chatId = msg.chatId;
-      addMessage(chatId, msg);
-      saveMessagesToStorage(chatId, [
-        ...(messages[chatId] || []),
-        msg,
-      ]);
-    });
-
-    wsService.on("newMessage", (message: Message) => {
-      if (!message?.chatId) return;
-      const chatId = message.chatId;
-      addMessage(chatId, message);
-      saveMessagesToStorage(chatId, [
-        ...(messages[chatId] || []),
-        message,
-      ]);
-
-      // If currently viewing this chat, optionally mark as read (event name may differ server-side)
-      if (selectedChat?.id === chatId) {
-        const socket = wsService.getSocket();
-        if (socket) {
-          socket.emit("mark_as_read", {
-            messageId: message.id,
-            chatId,
-          });
-        }
-      }
-    });
-
-    wsService.on(
-      "messageStatusUpdate",
-      ({ messageId, status }: { messageId: string; status: string }) => {
-        if (selectedChat) {
-          const validStatuses = ["SENT", "DELIVERED", "READ"] as const;
-          const isValidStatus = validStatuses.includes(status as any);
-          const newStatus = isValidStatus
-            ? (status as "SENT" | "DELIVERED" | "READ")
-            : "SENT";
-
-          const chatMessages = messages[selectedChat.id] || [];
-          const updatedMessages = chatMessages.map((msg) =>
-            msg.id === messageId ? { ...msg, status: newStatus } : msg
-          );
-          setMessages(selectedChat.id, updatedMessages);
-        }
-      }
-    );
-
-    wsService.on("messageDeleted", ({ messageId }: { messageId: string }) => {
-      if (selectedChat) {
-        const chatMessages = messages[selectedChat.id] || [];
-        const updatedMessages = chatMessages.filter(
-          (msg) => msg.id !== messageId
-        );
-        setMessages(selectedChat.id, updatedMessages);
-        saveMessagesToStorage(selectedChat.id, updatedMessages);
-      }
-    });
-
-    wsService.on("userTyping", ({
-      userId,
-      username,
-      isTyping,
-    }: {
-      userId: string;
-      username: string;
-      isTyping: boolean;
-    }) => {
-      if (selectedChat) {
-        if (isTyping) {
-          addTypingUser(selectedChat.id, username);
-        } else {
-          removeTypingUser(selectedChat.id, username);
-        }
+    // On send error, re-enqueue payload for retry via outbox
+    wsService.on('sendError', (evt: { error: any; payload: { chatId: string; content: string; type?: string; replyToId?: string; language?: string; filename?: string; attachments?: Array<{ url: string; originalName: string; filename?: string; mimeType: string; size: number; thumbnail?: string | null }>; } }) => {
+      try {
+        enqueueOutbox({
+          id: `ob-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          payload: evt.payload,
+          createdAt: Date.now(),
+        });
+      } catch (e) {
+        console.warn('Failed to enqueue outbox item after sendError', e);
       }
     });
   };
@@ -243,7 +556,15 @@ export default function ChatLayout() {
           avatar: currentUser.avatar,
         });
       }
+       try {
+        (useChatStore.getState().chats || []).forEach((c) => {
+          if (c?.id) wsService.joinChat(c.id);
+        });
+      } catch {}
     }
+    setTimeout(() => {
+      flushOutbox();
+    }, 150);
   };
 
   const handleDisconnect = () => {
@@ -305,6 +626,7 @@ export default function ChatLayout() {
   const handleAuthSuccess = async (user: User) => {
     setCurrentUser(user);
     setShowAuthModal(false);
+    authBlockedRef.current = false; 
     await connectWebSocket();
     try {
       const chats = await apiService.getChats();
@@ -375,12 +697,19 @@ export default function ChatLayout() {
       
       addChat(newChat);
       setSelectedChat(newChat);
-      setReplyingTo(null);
+      setReplyingByChat(prev => ({ ...prev, [newChat.id]: null }));
       
       setMessages(newChat.id, []);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating chat:', error);
+
+      // If unauthorized, prompt re-auth
+      if (String(error?.message || '').includes('Unauthorized')) {
+        try { apiService.clearToken(); } catch {}
+        setShowAuthModal(true);
+        return;
+      }
       try {
         const latestChats = await apiService.getChats();
         useChatStore.getState().setChats(latestChats);
@@ -419,54 +748,88 @@ export default function ChatLayout() {
       return;
     }
 
+    const scopedReply = selectedChat ? (replyingByChat[selectedChat.id] || null) : null;
+
     console.log('Sending message:', {
       chatId: selectedChat.id,
       type,
       contentLength: text.length,
-      isReply: !!replyingTo
+      isReply: !!scopedReply
     });
 
-    // Normalize type to backend enum casing
     const normalizedType = (type || 'text').toUpperCase();
+    const normAttachment = attachment ? {
+      url: attachment.url,
+      originalName: attachment.originalName || attachment.filename || attachment.name || 'file',
+      filename: attachment.filename || attachment.originalName || attachment.name || 'file',
+      mimeType: attachment.mimeType || attachment.type || 'application/octet-stream',
+      size: Number(attachment.size) || 0,
+      thumbnail: attachment.thumbnail ?? null,
+      path: attachment.path,
+      storageKey: attachment.storageKey,
+      storageBucket: attachment.storageBucket,
+      storageProvider: attachment.storageProvider,
+    } : undefined;
+
     const messageData: any = {
       chatId: selectedChat.id,
       content: text,
       type: normalizedType,
-      ...(replyingTo && {
-        replyToId: replyingTo.id,
+      ...(scopedReply && {
+        replyToId: scopedReply.id,
       }),
     };
-    if (attachment) {
-      messageData.attachments = [attachment];
+    if (normAttachment) {
+      messageData.attachments = [normAttachment];
     }
     
-    wsService.sendMessage(messageData);
-    setReplyingTo(null);
+    const connected = wsService.isConnected();
+    if (connected) {
+      wsService.sendMessage(messageData);
+    } else {
+      enqueueOutbox({
+        id: `ob-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        payload: messageData,
+        createdAt: Date.now(),
+      });
+    }
+    setReplyingByChat(prev => ({ ...prev, [selectedChat.id]: null }));
     
-    // Optimistically add the message to the UI
     const tempId = `temp-${Date.now()}`;
     const now = new Date().toISOString();
+
+    // For Ticks
+    let optimisticStatus: Message['status'] = 'SENT';
+    if (selectedChat.type === 'DIRECT') {
+      const memberIds = (selectedChat.members || []).map((m: any) => m.userId || m.user?.id);
+      const otherId = memberIds.find(id => id && id !== currentUser.id);
+      const other = users.find(u => u.id === otherId);
+      if (other && other.status === 'online') {
+        optimisticStatus = 'DELIVERED';
+      }
+    }
+
     const tempMessage: Message = {
       id: tempId,
       chatId: selectedChat.id,
       content: text,
       type: normalizedType as any,
-      status: 'SENT', 
+      status: optimisticStatus, 
       sender: currentUser,
       createdAt: now,
       updatedAt: now,
-      attachments: attachment ? [{
+      attachments: normAttachment ? [{
         id: `temp-att-${Date.now()}`,
-        filename: attachment.originalName || attachment.filename || 'file',
-        originalName: attachment.originalName || attachment.filename || 'file',
-        mimeType: attachment.mimeType || 'application/octet-stream',
-        size: attachment.size || 0,
-        url: attachment.url,
-        thumbnail: attachment.thumbnail || null,
+        filename: normAttachment.filename,
+        originalName: normAttachment.originalName,
+        mimeType: normAttachment.mimeType,
+        size: normAttachment.size,
+        url: normAttachment.url,
+        thumbnail: normAttachment.thumbnail,
         createdAt: now,
       }] : [],
       reactions: [],
-      ...(replyingTo && { replyTo: replyingTo }),
+      ...(scopedReply && { replyTo: scopedReply }),
     };
     
     addMessage(selectedChat.id, tempMessage);
@@ -482,19 +845,20 @@ export default function ChatLayout() {
 
   const sendCodeSnippet = (code: string, language: string, filename?: string) => {
     if (code.trim() && selectedChat && currentUser) {
+      const scopedReply = selectedChat ? (replyingByChat[selectedChat.id] || null) : null;
       const messageData = {
         chatId: selectedChat.id,
         content: code,
         type: 'CODE',
         language,
         ...(filename ? { filename } : {}),
-        ...(replyingTo && {
-          replyToId: replyingTo.id,
+        ...(scopedReply && {
+          replyToId: scopedReply.id,
         }),
       };
       
       wsService.sendMessage(messageData);
-      setReplyingTo(null);
+      setReplyingByChat(prev => ({ ...prev, [selectedChat.id]: null }));
     }
   };
 
@@ -505,17 +869,17 @@ export default function ChatLayout() {
   };
 
   const deleteMessage = (messageId: string) => {
-    if (selectedChat && currentUser) {
-      wsService.deleteMessage(selectedChat.id, messageId);
-    }
+    storeDeleteMessage(messageId, true);
   };
 
   const replyToMessage = (message: Message) => {
-    setReplyingTo(message);
+    if (!selectedChat?.id) return;
+    setReplyingByChat(prev => ({ ...prev, [selectedChat.id]: message }));
   };
 
   const cancelReply = () => {
-    setReplyingTo(null);
+    if (!selectedChat?.id) return;
+    setReplyingByChat(prev => ({ ...prev, [selectedChat.id]: null }));
   };
 
   if (isLoading) {
@@ -540,23 +904,56 @@ export default function ChatLayout() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-900">
-      <Sidebar onLogout={handleLogout} onUserSelect={handleStartConversation} />
-      <ChatArea
-        replyingTo={replyingTo}
-        onSendMessage={sendMessage}
-        onSendCodeSnippet={(code, language, filename) => sendCodeSnippet(code, language, filename)}
-        onTyping={handleTyping}
-        onDeleteMessage={deleteMessage}
-        onReplyToMessage={replyToMessage}
-        onCancelReply={cancelReply}
-      />
+    <div className={`flex h-screen min-h-0 bg-gray-900 ${isMobile ? 'relative overflow-hidden' : ''}`}>
+      {/* Sidebar: Mobile responsiveness */}
+      <div
+        className={
+          isMobile
+            ? `absolute inset-0 w-full h-full min-h-0 flex flex-col overflow-hidden transform ${
+                mobileShowSidebar ? 'translate-x-0 z-20 pointer-events-auto' : '-translate-x-full z-10 pointer-events-none'
+              }`
+            : 'flex h-full min-h-0'
+        }
+        style={isMobile ? { contain: 'content' as any } : undefined}
+      >
+        <Sidebar
+          onLogout={handleLogout}
+          onUserSelect={handleStartConversation}
+          onChatSelected={() => isMobile && setMobileShowSidebar(false)}
+        />
+      </div>
 
-      {isConnecting && (
-        <div className="fixed top-4 right-4 bg-yellow-600 text-white px-4 py-2 rounded-md shadow-lg">
-          Connecting to Biuld...
-        </div>
-      )}
+      {/* Chat Area: Mobile responsiveness */}
+      <div
+        className={
+          isMobile
+            ? `absolute inset-0 w-full h-full min-h-0 flex flex-col overflow-hidden transform ${
+                mobileShowSidebar ? 'translate-x-full z-10 pointer-events-none' : 'translate-x-0 z-20 pointer-events-auto'
+              }`
+            : 'flex-1 min-h-0 h-full flex'
+        }
+        style={isMobile ? { contain: 'content' as any } : undefined}
+      >
+        <ChatArea
+          replyingTo={selectedChat ? (replyingByChat[selectedChat.id] || null) : null}
+          onSendMessage={sendMessage}
+          onSendCodeSnippet={sendCodeSnippet}
+          onTyping={handleTyping}
+          onDeleteMessage={deleteMessage}
+          onReplyToMessage={replyToMessage}
+          onCancelReply={cancelReply}
+          onBack={() => {
+            if (isMobile) {
+              setMobileShowSidebar(true);
+              try { setSelectedChat(undefined as any); } catch {}
+              try { sessionStorage.setItem('biuld_sidebar_force_visible', '1'); } catch {}
+              try { sessionStorage.removeItem('biuld_pending_chat'); } catch {}
+              suppressUrlSyncRef.current = true;
+              setTimeout(() => { suppressUrlSyncRef.current = false; }, 500);
+            }
+          }}
+        />
+      </div>
     </div>
   );
 }
