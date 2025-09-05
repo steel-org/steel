@@ -1,9 +1,9 @@
-# 🚀 Biuld v4.2.0 - Production Deployment Guide
+# 🚀 Biuld v4.2.1 - Production Deployment Guide
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Prerequisites](#prerequisites)
+2. [Prerequisites](#prerequisites)  
 3. [Backend Deployment](#backend-deployment)
 4. [Frontend Deployment](#frontend-deployment)
 5. [Environment Configuration](#environment-configuration)
@@ -15,7 +15,7 @@
 
 ## Overview
 
-This guide provides step-by-step instructions for deploying Biuld v4.2.0 to production environments. This version represents a major milestone with production-ready features including real-time messaging, code sharing, file uploads, and comprehensive deployment guides.
+This guide provides step-by-step instructions for deploying Biuld v4.2.1 to production environments. This version represents a major milestone with production-ready features including real-time messaging, code sharing, file uploads, and comprehensive deployment guides.
 
 The application consists of:
 

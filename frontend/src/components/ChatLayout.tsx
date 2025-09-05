@@ -503,7 +503,7 @@ export default function ChatLayout() {
     try {
       setIsConnecting(true);
       await wsService.connect();
-      console.log("WebSocket connected successfully");
+
     } catch (error) {
       console.error("Failed to connect to WebSocket:", error);
     } finally {
@@ -545,7 +545,7 @@ export default function ChatLayout() {
   };
 
   const handleConnect = () => {
-    console.log('Connected to WebSocket');
+
     // Re-authenticate and rejoin rooms on reconnect
     if (currentUser) {
       const socket = wsService.getSocket();
@@ -568,7 +568,7 @@ export default function ChatLayout() {
   };
 
   const handleDisconnect = () => {
-    console.log('Disconnected from WebSocket');
+
   };
 
   const handleUsers = (users: any[]) => {
@@ -665,7 +665,7 @@ export default function ChatLayout() {
       return;
     }
 
-    console.log('Starting new conversation with user:', userId);
+
 
     try {
       if (creatingDMWithRef.current.has(userId)) {
@@ -682,18 +682,18 @@ export default function ChatLayout() {
       });
   
       if (existingChat) {
-        console.log('Found existing chat:', existingChat.id);
+
         setSelectedChat(existingChat);
         return;
       }
       
-      console.log('Creating new chat with user:', userId);
+
       const newChat = await apiService.createChat({
         type: 'DIRECT',
         memberIds: [userId],
       });
       
-      console.log('Server created chat:', newChat);
+
       
       addChat(newChat);
       setSelectedChat(newChat);
@@ -719,7 +719,7 @@ export default function ChatLayout() {
           return ids.includes(userId) && ids.includes(currentUser!.id);
         });
         if (fallback) {
-          console.log('Routing to existing chat after failure:', fallback.id);
+
           setSelectedChat(fallback);
           return;
         }

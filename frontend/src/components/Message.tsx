@@ -296,7 +296,8 @@ const MessageComponent: React.FC<MessageProps> = ({
               <img
                 src={message.sender.avatar || "/default-avatar.png"}
                 alt={message.sender.username}
-                className="w-6 h-6 rounded-full mr-2 ring-2 ring-offset-1 ring-gray-200"
+                loading="lazy"
+                className="w-6 h-6 rounded-full mr-2 object-cover object-center bg-gray-200 dark:bg-gray-700 ring-1 ring-black/10 dark:ring-white/10 ring-offset-0"
               />
               <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
                 {message.sender.username}

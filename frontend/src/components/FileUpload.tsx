@@ -50,7 +50,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
         timedOutReasonRef.current = 'Upload timed out. Please check your connection or try a smaller file.';
         try { abortRef.current?.abort(); } catch {}
       }, 45_000);
-      console.log('[FileUpload] Starting chat-file upload');
+
       const data = await apiService.uploadChatFile(file, abortRef.current.signal);
       if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
       const { selectedChat } = useChatStore.getState();

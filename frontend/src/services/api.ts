@@ -1,13 +1,11 @@
 import { ApiResponse, AuthResponse, Chat, Message, MessagesResponse, User } from '@/types';
 
-// Prefer explicit env. Otherwise, when running in a browser (incl. mobile on LAN),
-// resolve to current host with backend port 5000 to avoid localhost-only issues.
 const API_BASE_URL = (() => {
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
   if (envUrl) return envUrl;
   if (typeof window !== 'undefined') {
     const proto = window.location.protocol;
-    const host = window.location.hostname; // works for LAN IP, hostname.local, localhost
+    const host = window.location.hostname; 
     return `${proto}//${host}:5000`;
   }
   return 'http://localhost:5000';
@@ -93,7 +91,6 @@ class ApiService {
           return { success: true, data: { message: 'Logged out successfully' } as T };
         }
         if (response.status === 401) {
-          // Token invalid/expired; clear and let caller handle re-auth
           this.clearToken();
           throw new Error('Unauthorized');
         }
@@ -102,7 +99,6 @@ class ApiService {
 
       return data;
     } catch (error: any) {
-      // Do not log AbortError to avoid noisy console when user cancels/timeout
       if (error?.name === 'AbortError') {
         throw error;
       }
@@ -292,7 +288,7 @@ class ApiService {
   }
 
   async downloadFile(fileId: string): Promise<string> {
-    // Directly fetch the proxy endpoint which now streams the file
+    // Directly fetch the proxy endpoint which will streams the file
     const url = `${API_BASE_URL}/api/files/${fileId}/download`;
     const token = this.getToken();
     const resp = await fetch(url, {

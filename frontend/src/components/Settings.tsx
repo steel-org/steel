@@ -251,7 +251,7 @@ export default function Settings({
           onClose={() => setIsProfileModalOpen(false)}
           isCurrentUser={true}
           onEditProfile={() => {
-            console.log("Edit profile clicked");
+
           }}
         />
       )}
