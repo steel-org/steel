@@ -251,5 +251,5 @@ server.listen(PORT, () => {
   console.log(`🚀 Biuld Private Chat Backend running on port ${PORT}`);
   console.log(`📡 Socket.io server ready for connections`);
   console.log(`🌐 Health check: http://localhost:${PORT}/health`);
-  console.log(`This is Version 4.1.1`);
+  console.log(`This is Version 4.2.1`);
 });

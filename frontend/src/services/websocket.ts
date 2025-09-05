@@ -67,7 +67,7 @@ class WebSocketService {
     });
 
       this.socket.on('connect', () => {
-        console.log('Connected to WebSocket server');
+
         this.reconnectAttempts = 0;
         
         this.socket?.emit('join', {
@@ -80,7 +80,7 @@ class WebSocketService {
       });
 
       this.socket.on('disconnect', (reason) => {
-        console.log('Disconnected from WebSocket server:', reason);
+
         if (reason === 'io server disconnect') {
           this.socket?.connect();
         }
@@ -128,7 +128,7 @@ class WebSocketService {
       
       this.eventCallbacks = {};
       
-      console.log('WebSocket disconnected and cleaned up');
+
     } catch (error) {
       console.error('Error during WebSocket disconnection:', error);
       if (this.socket) {
@@ -342,13 +342,13 @@ class WebSocketService {
 
     // Chat events
     this.socket.on('joined_chat', (data: { chatId: string }) => {
-      console.log('Joined chat:', data.chatId);
+
     });
 
     // New chat created 
     this.socket.on('chat:created', (chat: Chat) => {
       try {
-        console.log('chat:created received:', chat?.id);
+
         const { chats, addChat } = useChatStore.getState();
         const exists = chats.some(c => c.id === chat.id);
         if (!exists) {
@@ -362,7 +362,7 @@ class WebSocketService {
     // Chat updated
     this.socket.on('chat:updated', (chat: Chat) => {
       try {
-        console.log('chat:updated received:', chat?.id);
+
         useChatStore.getState().updateChat(chat.id, chat as any);
         this.emit('chatUpdated', chat);
       } catch (err) {
@@ -409,7 +409,7 @@ class WebSocketService {
           // no-op
         }
       } else {
-        console.log('Message sent successfully:', response);
+
       }
     });
   }

@@ -40,7 +40,6 @@ const isDevOriginAllowed = (origin?: string | null) => {
     if (host === 'localhost' || host === '127.0.0.1') return true;
     // *.local domains
     if (/^[a-z0-9-]+\.local$/i.test(host)) return true;
-    // IPv4 LAN (e.g., 192.168.x.x or 10.x.x.x or 172.16-31.x.x)
     if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(host)) return true;
   } catch {}
   return false;
@@ -115,7 +114,7 @@ app.get("/api/health", (req, res) => {
   res.json({
     success: true,
     message: "Server is running",
-    version: "4.2.0",
+    version: "4.2.1",
     timestamp: new Date().toISOString(),
   });
 });
@@ -126,7 +125,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 server.listen(Number(PORT), "0.0.0.0", () => {
-  logger.info(`🚀 Biuld Backend v4.2.0 running on port ${PORT}`);
+  logger.info(`🚀 Biuld Backend v4.2.1 running on port ${PORT}`);
   logger.info(`📡 Socket.io server ready for connections`);
   logger.info(`🌐 Health check: http://localhost:${PORT}/api/health`);
   logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);

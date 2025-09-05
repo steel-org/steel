@@ -8,6 +8,7 @@ interface CodeEditorProps {
   initialCode?: string;
   initialLanguage?: string;
   initialFilename?: string;
+  height?: string | number; // optional explicit height, defaults to 60vh
 }
 
 const languageExtensions: { [key: string]: string } = {
@@ -71,7 +72,8 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   onClose,
   initialCode = '',
   initialLanguage = 'javascript',
-  initialFilename = ''
+  initialFilename = '',
+  height = '60vh'
 }) => {
   const [code, setCode] = useState(initialCode);
   const [language, setLanguage] = useState(initialLanguage);
@@ -139,8 +141,13 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  const resolvedHeight = typeof height === 'number' ? `${height}px` : height;
+
   return (
-    <div className="relative bg-gray-800 rounded-lg overflow-hidden border border-gray-700 flex flex-col h-full">
+    <div
+      className="relative bg-gray-800 rounded-lg overflow-hidden border border-gray-700 flex flex-col h-full min-h-[300px]"
+      style={{ height: resolvedHeight }}
+    >
       {/* Header */}
       <div className="flex justify-between items-center bg-gray-900 px-4 py-2 border-b border-gray-700">
         <div className="flex items-center space-x-2">

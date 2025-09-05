@@ -55,3 +55,9 @@ so i have some things i want to say , i did something yesterday , went to physic
 - Finalize offline outbox integration with ws reconnect and optimistic replacement across pages
 
 - Test mobile and desktop flows: navigation, back behavior, login/logout, chat send (online/offline), replies, attachments
+
+# Today 5th , been days, launched v4.2.1
+
+### Here are some things i did today
+
+- Fixed Editor not showing in Desktop mode.

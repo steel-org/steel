@@ -1,6 +1,6 @@
 # 📋 Biuld - Version Management Guide
 
-## Current Version: v4.2.0
+## Current Version: v4.2.1
 
 Biuld Chat follows [Semantic Versioning](https://semver.org/) (SemVer) for version management.
 
@@ -16,7 +16,21 @@ MAJOR.MINOR.PATCH
 
 ## Version History
 
-### v4.2.0 (Current) - Minor Release
+### v4.2.1 (Current) - Patch Release
+
+**Release Date**: 05/09/2025
+**Status**: Production Ready
+**Type**: Patch
+
+**Changes**:
+
+- Version bump to v4.2.1 in all project files and UI components.
+- Fix Editor not showing in Desktop mode.
+- Remove unnecessary console logs.
+- Fix issue with the code editor not displaying in desktop mode by adding a height prop and style. 
+- Minor bug fixes and refactoring for consistency.
+
+### v4.2.0 (Previous) - Minor Release
 
 **Release Date**: 22/08/2025
 **Status**: Production Ready
@@ -655,8 +669,8 @@ BREAKING CHANGE: Complete rebrand from Steel to Biuld v4.0.0 with Supabase migra
 
 ### Current Version
 
-- **Backend**: v4.2.0
-- **Frontend**: v4.2.0
+- **Backend**: v4.2.1
+- **Frontend**: v4.2.1
 - **Status**: Production Ready
 
 ### Next Release
