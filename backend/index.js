@@ -13,7 +13,7 @@ const io = socketIo(server, {
     origin:
       process.env.NODE_ENV === "production"
         ? ["https://biuld.vercel.app"]
-        : ["http://localhost:3000", "https://g17zp77p-3000.eun1.devtunnels.ms/"],
+        : ["http://localhost:3000"],
     methods: ["GET", "POST"],
   },
 });
@@ -239,7 +239,7 @@ app.get("/health", (req, res) => {
 app.get("/info", (req, res) => {
   res.json({
     name: "Biuld Private Chat Backend",
-    version: "4.1.1",
+    version: "4.2.2",
     connectedUsers: connectedUsers.size,
     uptime: process.uptime(),
   });
@@ -251,5 +251,5 @@ server.listen(PORT, () => {
   console.log(`🚀 Biuld Private Chat Backend running on port ${PORT}`);
   console.log(`📡 Socket.io server ready for connections`);
   console.log(`🌐 Health check: http://localhost:${PORT}/health`);
-  console.log(`This is Version 4.2.1`);
+  console.log(`This is Version 4.2.2`);
 });

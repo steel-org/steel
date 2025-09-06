@@ -61,3 +61,15 @@ so i have some things i want to say , i did something yesterday , went to physic
 ### Here are some things i did today
 
 - Fixed Editor not showing in Desktop mode.
+- Bumped to 4.2.1
+
+## Errors in 4.2.1
+ - Codes arent saving as files after being sent from the code editor, they appear as bare codes text messages 
+
+
+# Today 6th , been days, launched v4.2.2
+
+### Here are some things i did today
+
+- Fixed codes not saving as a file after being sent from the code editor
+- Bumped to 4.2.2

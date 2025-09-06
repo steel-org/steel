@@ -287,8 +287,7 @@ class ApiService {
     return response.data!;
   }
 
-  async downloadFile(fileId: string): Promise<string> {
-    // Directly fetch the proxy endpoint which will streams the file
+  async downloadFile(fileId: string, filename?: string): Promise<void> {
     const url = `${API_BASE_URL}/api/files/${fileId}/download`;
     const token = this.getToken();
     const resp = await fetch(url, {
@@ -297,8 +296,8 @@ class ApiService {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
+
     if (!resp.ok) {
-      // Try to parse error JSON for message if available
       try {
         const j = await resp.json();
         throw new Error(j?.error || `Download failed (${resp.status})`);
@@ -306,10 +305,25 @@ class ApiService {
         throw new Error(`Download failed (${resp.status})`);
       }
     }
-    // Convert to Blob and return an object URL for client download
+
+    // Get filename from content-disposition or use provided filename
+    let finalFilename = filename || `file-${fileId}`;
+    const contentDisposition = resp.headers.get('content-disposition');
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (match?.[1]) finalFilename = match[1].replace(/['"]/g, '');
+    }
+
+    // Create and trigger download
     const blob = await resp.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    return objectUrl;
+    const objectUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = finalFilename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(objectUrl);
+    document.body.removeChild(a);
   }
 
   async downloadViaProxy(fileUrl: string, name?: string): Promise<string> {
