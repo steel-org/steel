@@ -16,7 +16,20 @@ MAJOR.MINOR.PATCH
 
 ## Version History
 
-### v4.2.2 (Current) - Patch Release
+### v4.2.3 (Current) - Patch Release
+
+**Release Date**: 06/09/2025
+**Status**: Production Ready
+**Type**: Patch
+
+**Changes**:
+
+- Version bump to v4.2.3 in all project files and UI components.
+- Fix codes not saving as files after being sent from the code editor, they appear as bare codes text messages.
+- Made files from code editor save as .fileExtensionType files and downloadable from the message.
+- Minor bug fixes and refactoring for consistency.
+
+### v4.2.2 (Previous) - Patch Release
 
 **Release Date**: 06/09/2025
 **Status**: Production Ready
@@ -681,8 +694,8 @@ BREAKING CHANGE: Complete rebrand from Steel to Biuld v4.0.0 with Supabase migra
 
 ### Current Version
 
-- **Backend**: v4.2.2
-- **Frontend**: v4.2.2
+- **Backend**: v4.2.3
+- **Frontend**: v4.2.3
 - **Status**: Production Ready
 
 ### Next Release

@@ -189,10 +189,82 @@ export default function ChatArea({
     }
   };
 
-  const handleSendCode = (code: string, language: string, filename?: string) => {
-    if (code.trim()) {
-      onSendCodeSnippet(code, language, filename);
+  const handleSendCode = async (code: string, language: string, filename?: string) => {
+    if (!code.trim() || !currentUser) return;
+    
+    try {
       setShowCodeInput(false);
+      
+      // Map of language to MIME types and extensions
+      const languageConfig: { [key: string]: { mime: string; ext: string } } = {
+        'javascript': { mime: 'application/javascript', ext: 'js' },
+        'typescript': { mime: 'application/typescript', ext: 'ts' },
+        'python': { mime: 'text/x-python', ext: 'py' },
+        'java': { mime: 'text/x-java', ext: 'java' },
+        'cpp': { mime: 'text/x-c++src', ext: 'cpp' },
+        'c': { mime: 'text/x-csrc', ext: 'c' },
+        'csharp': { mime: 'text/x-csharp', ext: 'cs' },
+        'go': { mime: 'text/x-go', ext: 'go' },
+        'rust': { mime: 'text/rust', ext: 'rs' },
+        'ruby': { mime: 'text/x-ruby', ext: 'rb' },
+        'php': { mime: 'application/x-httpd-php', ext: 'php' },
+        'swift': { mime: 'text/x-swift', ext: 'swift' },
+        'kotlin': { mime: 'text/x-kotlin', ext: 'kt' },
+        'html': { mime: 'text/html', ext: 'html' },
+        'css': { mime: 'text/css', ext: 'css' },
+        'scss': { mime: 'text/x-scss', ext: 'scss' },
+        'json': { mime: 'application/json', ext: 'json' },
+        'markdown': { mime: 'text/markdown', ext: 'md' },
+        'yaml': { mime: 'text/yaml', ext: 'yaml' },
+        'xml': { mime: 'application/xml', ext: 'xml' },
+        'sql': { mime: 'application/sql', ext: 'sql' },
+        'bash': { mime: 'application/x-sh', ext: 'sh' },
+        'powershell': { mime: 'application/x-powershell', ext: 'ps1' },
+        'dockerfile': { mime: 'text/plain', ext: 'Dockerfile' },
+        'makefile': { mime: 'text/plain', ext: 'Makefile' }
+      };
+
+      const config = languageConfig[language] || { mime: 'text/plain', ext: 'txt' };
+      const extension = config.ext;
+      
+      const finalFilename = filename 
+        ? filename.endsWith(`.${extension}`) 
+          ? filename 
+          : `${filename}.${extension}`
+        : `code.${extension}`;
+      
+      // Create a file with proper MIME type
+      const blob = new Blob([code], { type: config.mime });
+      const file = new File([blob], finalFilename, { 
+        type: config.mime,
+        lastModified: Date.now()
+      });
+
+      // Upload the file using the API service
+      const uploadResponse = await apiService.uploadChatFile(file);
+      
+      if (!uploadResponse?.url) {
+        throw new Error('Failed to upload code file');
+      }
+
+      // Create attachment object matching the file upload pattern
+      const attachment = {
+        url: uploadResponse.url,
+        originalName: finalFilename,
+        filename: finalFilename,
+        mimeType: config.mime,
+        size: file.size,
+        thumbnail: null,
+        path: uploadResponse.path,
+        id: uploadResponse.id
+      };
+
+      // Send message with the file attachment, matching the file upload pattern
+      onSendMessage(attachment.originalName, 'file', attachment);
+      
+    } catch (error) {
+      console.error('Error sending code:', error);
+      alert('Failed to send code. Please try again.');
     }
   };
 

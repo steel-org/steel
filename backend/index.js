@@ -239,7 +239,7 @@ app.get("/health", (req, res) => {
 app.get("/info", (req, res) => {
   res.json({
     name: "Biuld Private Chat Backend",
-    version: "4.2.2",
+    version: "4.2.3",
     connectedUsers: connectedUsers.size,
     uptime: process.uptime(),
   });
@@ -251,5 +251,5 @@ server.listen(PORT, () => {
   console.log(`🚀 Biuld Private Chat Backend running on port ${PORT}`);
   console.log(`📡 Socket.io server ready for connections`);
   console.log(`🌐 Health check: http://localhost:${PORT}/health`);
-  console.log(`This is Version 4.2.2`);
+  console.log(`This is Version 4.2.3`);
 });

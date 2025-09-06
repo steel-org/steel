@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Steel v4.2.2 - Local Development Setup Script
-# This script automates the setup process for Steel development environment
+# Biuld v4.2.3 - Local Development Setup Script
+# This script automates the setup process for Biuld development environment
 # 
 # What this script does:
 # - Checks system prerequisites (Node.js, PostgreSQL, Redis)

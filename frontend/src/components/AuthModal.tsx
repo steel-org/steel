@@ -171,7 +171,7 @@ export default function AuthModal({
 
         <div className="mt-6 pt-6 border-t border-gray-700">
           <div className="text-xs text-gray-400 text-center">
-            <p>Biuld v4.2.2 • Real-time developer collaboration</p>
+            <p>Biuld v4.2.3 • Real-time developer collaboration</p>
             <p className="mt-1">
               Share code, ideas, and collaborate seamlessly
             </p>
