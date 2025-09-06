@@ -145,16 +145,6 @@ export const useChatStore = create<ChatState>()(
         selectedChat: null,
         setChats: (chats) =>
           set((state) => {
-            try {
-              console.log(
-                "Setting chats:",
-                chats.map((c) => ({
-                  id: c.id,
-                  type: c.type,
-                  name: c.name || "DM/Group",
-                }))
-              );
-            } catch {}
             const list = Array.isArray(chats) ? [...chats] : [];
             const getTs = (c: any) =>
               new Date(
@@ -206,14 +196,6 @@ export const useChatStore = create<ChatState>()(
         },
         addChat: (chat) =>
           set((state) => {
-            console.log("Adding chat:", {
-              id: chat.id,
-              name: chat.name || "Direct Message",
-              members: chat.members?.map(
-                (m) => m.user?.username || "Unknown User"
-              ),
-            });
-
             let next = state.chats.filter((c) => c.id !== chat.id);
             if (chat.type === "DIRECT" && Array.isArray(chat.members)) {
               const idsNew = chat.members
@@ -260,13 +242,6 @@ export const useChatStore = create<ChatState>()(
         messages: {},
         addMessage: (chatId, message) =>
           set((state) => {
-            console.log("Adding message to store:", {
-              chatId,
-              messageId: message.id,
-              content: message.content?.substring(0, 50) + "...",
-              sender: message.sender?.username,
-            });
-
             const chatMessages = state.messages[chatId] || [];
 
             if (chatMessages.some((m) => m.id === message.id)) {
@@ -304,11 +279,6 @@ export const useChatStore = create<ChatState>()(
               ...state.messages,
               [chatId]: finalMessages,
             };
-
-            console.log("Updated messages for chat:", {
-              chatId,
-              messageCount: updatedMessages[chatId]?.length || 0,
-            });
 
             const nowIso = new Date().toISOString();
             const updatedChats = state.chats.map((c) =>
@@ -484,11 +454,6 @@ export const useChatStore = create<ChatState>()(
 
         // Event handlers
         handleMessageReceived: (event) => {
-          console.log("Handling received message:", {
-            eventType: "message_received",
-            messageId: event.message?.id,
-            chatId: event.message?.chatId,
-          });
 
           const { message } = event;
           const chatId = message.chatId || "unknown";
@@ -506,9 +471,6 @@ export const useChatStore = create<ChatState>()(
           const isFromMe =
             message.sender?.id && me?.id && message.sender.id === me.id;
           if (get().selectedChat?.id !== chatId && !isFromMe) {
-            console.log(
-              "Creating notification for new message in unselected chat"
-            );
             get().addNotification({
               id: `msg-${message.id}`,
               title: message.sender?.username || "New message",
@@ -518,9 +480,6 @@ export const useChatStore = create<ChatState>()(
             });
             get().incrementUnread(chatId);
           } else {
-            console.log(
-              "Message received in current chat, no notification needed"
-            );
           }
         },
 

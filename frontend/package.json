@@ -1,6 +1,6 @@
 {
   "name": "biuld-frontend",
-  "version": "4.2.2",
+  "version": "4.2.3",
   "description": "Modern chat frontend for biuld developer tool",
   "private": true,
   "scripts": {

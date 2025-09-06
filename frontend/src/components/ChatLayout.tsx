@@ -750,13 +750,6 @@ export default function ChatLayout() {
 
     const scopedReply = selectedChat ? (replyingByChat[selectedChat.id] || null) : null;
 
-    console.log('Sending message:', {
-      chatId: selectedChat.id,
-      type,
-      contentLength: text.length,
-      isReply: !!scopedReply
-    });
-
     const normalizedType = (type || 'text').toUpperCase();
     const normAttachment = attachment ? {
       url: attachment.url,

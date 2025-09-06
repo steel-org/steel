@@ -226,12 +226,6 @@ class WebSocketService {
 
     // Message events (single unified event)
     this.socket.on('message_received', (data: MessageEvent) => {
-      console.log('Message received:', {
-        messageId: data.message?.id,
-        chatId: data.message?.chatId,
-        sender: data.message?.sender?.username,
-        content: data.message?.content?.substring(0, 50) + '...'
-      });
       this.emit('messageReceived', data);
       useChatStore.getState().handleMessageReceived?.(data);
 
@@ -391,13 +385,6 @@ class WebSocketService {
       console.error('WebSocket not connected');
       return;
     }
-
-    console.log('Sending message:', {
-      chatId: data.chatId,
-      type: data.type || 'text',
-      contentLength: data.content?.length,
-      replyToId: data.replyToId
-    });
 
     this.socket.emit('send_message', data, (response: any) => {
       if (response?.error) {
